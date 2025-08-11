@@ -6,9 +6,9 @@ import {
   EyeIcon,
   EyeSlashIcon,
 } from "@heroicons/react/24/outline";
-import logo from "../assets/logo.png"; // Confirm file name/path
-import illustration from "../assets/login-illustration.png"; // Confirm file name/path
-import separatorLine from "../assets/separator-line.png"; // Confirm file name/path
+import logo from "../assets/images/logo.png"; // Updated path
+import illustration from "../assets/images/login-illustration.png"; // Updated path
+import separatorLine from "../assets/images/separator-line.png"; // Updated path
 
 type LoginForm = {
   email: string;
@@ -69,7 +69,10 @@ const Login: React.FC = () => {
               />
               <EnvelopeIcon className="absolute right-3 top-3 h-5 w-5 text-gray-400" />
               {errors.email && (
-                <p className="mt-1 text-sm text-red-500">
+                <p
+                  className="mt-1 text-sm text-red-500"
+                  style={{ color: "#EF4444" }}
+                >
                   {errors.email.message}
                 </p>
               )}
@@ -97,7 +100,10 @@ const Login: React.FC = () => {
                 )}
               </button>
               {errors.password && (
-                <p className="mt-1 text-sm text-red-500">
+                <p
+                  className="mt-1 text-sm text-red-500"
+                  style={{ color: "#EF4444" }}
+                >
                   {errors.password.message}
                 </p>
               )}
