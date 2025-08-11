@@ -19,9 +19,14 @@
     "strict": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
-    "erasableSyntaxOnly": true,
     "noFallthroughCasesInSwitch": true,
-    "noUncheckedSideEffectImports": true
+    "noUncheckedSideEffectImports": true,
+    "isolatedModules": true, // Replaced invalid "erasableSyntaxOnly" with this for Vite compatibility
+
+    /* Additional Options */
+    "forceConsistentCasingInFileNames": true, // Ensures casing consistency to fix import errors
+    "esModuleInterop": true, // Helps with CommonJS/ES6 interop
+    "resolveJsonModule": true // Allows importing .json files if needed later
   },
   "include": ["src"]
 }

@@ -1,10 +1,18 @@
-import React from "react";
+import { Routes, Route } from "react-router-dom";
+import Login from "./pages/Login"; // Ensure this matches the exact file name and path
+import SignUp from "./pages/Signup";
+import ResetPassword from "./pages/ResetPassword";
+import Dashboard from "./pages/Dashboard";
 
 function App() {
   return (
-    <div className="flex justify-center items-center h-screen bg-blue text-white font-poppins">
-      <h1 className="text-4xl">Hello, Tailwind CSS!</h1>
-    </div>
+    <Routes>
+      <Route path="/" element={<Login />} />
+      <Route path="/login" element={<Login />} />
+      <Route path="/signup" element={<SignUp />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
+      <Route path="/dashboard" element={<Dashboard />} />
+    </Routes>
   );
 }
 
