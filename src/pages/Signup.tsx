@@ -8,7 +8,7 @@ import {
 } from "@heroicons/react/24/outline";
 import logo from "../assets/images/logo.png"; // Confirm file name/path
 import separatorLine from "../assets/images/separator-line.png"; // Confirm file name/path
-import illustration from "../assets/images/signup-illustration.png"; // Confirm file name/path (or use login-illustration.png if same)
+import illustration from "../assets/images/signup-illustration.png"; // Confirm file name/path
 
 type SignUpForm = {
   firstName: string;
@@ -32,21 +32,30 @@ const SignUp: React.FC = () => {
   } = useForm<SignUpForm>();
 
   const password = watch("password");
-  const confirmPassword = watch("confirmPassword"); // Used in validate function below
+  const confirmPassword = watch("confirmPassword");
 
   // Explicitly use confirmPassword to satisfy TypeScript (no-op for now)
   // Intent: This value is used in the confirmPassword validation to match with password
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const _ = confirmPassword;
 
-  const onSubmit: SubmitHandler<SignUpForm> = (data) => {
-    if (data.password !== data.confirmPassword) {
-      setError("Passwords do not match");
-      return;
+  const onSubmit: SubmitHandler<SignUpForm> = async (data) => {
+    try {
+      const response = await fetch("http://localhost:5000/api/signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      const result = await response.json();
+      if (response.ok) {
+        setError("");
+        navigate("/dashboard");
+      } else {
+        setError(result.message);
+      }
+    } catch (error) {
+      setError("Server error");
     }
-    // Dummy sign-up logic: redirect to dashboard if all fields are valid
-    setError("");
-    navigate("/dashboard");
   };
 
   return (
@@ -56,12 +65,18 @@ const SignUp: React.FC = () => {
         <div className="max-w-md w-full mx-auto">
           <div className="flex items-center mb-8">
             <img src={logo} alt="Budget Tracker Logo" className="h-8 w-auto" />
-            <span className="ml-2 text-xl font-bold text-gray-900">
+            <span className="ml-2 text-3xl font-bold tracking-wide text-gray-900">
               Budget Tracker
             </span>
           </div>
           <h2 className="text-3xl font-bold text-gray-900 mb-2">Sign Up</h2>
-          <p className="text-sm text-gray-600 mb-8">Welcome to our community</p>
+          <p
+            className="text-sm mb-8"
+            style={{ color: "#9CA3AF" }} // Tailwind gray-400
+          >
+            Welcome to our community
+          </p>{" "}
+          {/* Light grey */}
           <form onSubmit={handleSubmit(onSubmit)}>
             <div className="mb-4 flex flex-col md:flex-row gap-4">
               <div className="flex-1">
@@ -225,7 +240,7 @@ const SignUp: React.FC = () => {
             <button
               type="submit"
               className="w-full py-3 bg-purple-600 text-white font-semibold rounded-lg hover:bg-purple-700 transition-colors"
-              style={{ backgroundColor: "#6D28D9" }} // Fallback to ensure visibility
+              style={{ backgroundColor: "#6D28D9" }}
             >
               SIGN UP
             </button>
@@ -255,8 +270,8 @@ const SignUp: React.FC = () => {
       <div className="flex-1 flex items-center justify-center px-8">
         <img
           src={illustration}
-          alt="SignUp Illustration"
-          className="max-h-[calc(100%-4rem)] w-auto"
+          alt="Login Illustration"
+          className="max-h-[500px] max-w-[400px] w-auto"
         />
       </div>
     </div>

@@ -26,132 +26,163 @@ const Login: React.FC = () => {
     formState: { errors },
   } = useForm<LoginForm>();
 
-  const onSubmit: SubmitHandler<LoginForm> = (data) => {
-    if (data.email === "test@gmail.com" && data.password === "password123") {
-      setError("");
-      navigate("/dashboard");
-    } else {
-      setError("Invalid email or password");
+  const onSubmit: SubmitHandler<LoginForm> = async (data) => {
+    try {
+      const response = await fetch("http://localhost:5000/api/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      const result = await response.json();
+      if (response.ok) {
+        setError("");
+        navigate("/dashboard");
+      } else {
+        setError(result.message);
+      }
+    } catch (error) {
+      setError("Server error");
     }
   };
 
   return (
     <div className="flex h-screen bg-white font-poppins">
       {/* Left: Form Section */}
-      <div className="flex-1 flex flex-col justify-center px-8 md:px-16">
-        <div className="max-w-md w-full mx-auto">
-          <div className="flex items-center mb-8">
-            <img src={logo} alt="Budget Tracker Logo" className="h-8 w-auto" />
-            <span className="ml-2 text-xl font-bold text-gray-900">
-              Budget Tracker
-            </span>
+      <div className="flex-1 flex flex-col px-8 md:px-16">
+        <div className="pt-8">
+          <div className="max-w-md w-full mx-auto">
+            <div className="flex items-center">
+              <img
+                src={logo}
+                alt="Budget Tracker Logo"
+                className="h-8 w-auto"
+              />
+              <span className="ml-2 text-3xl font-bold tracking-wide text-gray-900">
+                Budget Tracker
+              </span>
+            </div>
           </div>
-          <h2 className="text-3xl font-bold text-gray-900 mb-2">
-            Welcome Back!
-          </h2>
-          <p className="text-sm text-gray-600 mb-8">
-            Sign in to continue to Budget Tracker
-          </p>
-          <form onSubmit={handleSubmit(onSubmit)}>
-            <div className="mb-4 relative">
-              <label htmlFor="email" className="sr-only">
-                Email
-              </label>
-              <input
-                id="email"
-                type="email"
-                placeholder="test@gmail.com"
-                className="w-full px-4 py-3 border border-blue-100 rounded-lg bg-gray-50 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                {...register("email", {
-                  required: "Email is required",
-                  pattern: { value: /^\S+@\S+$/i, message: "Invalid email" },
-                })}
-              />
-              <EnvelopeIcon className="absolute right-3 top-3 h-5 w-5 text-gray-400" />
-              {errors.email && (
-                <p
-                  className="mt-1 text-sm text-red-500"
-                  style={{ color: "#EF4444" }}
-                >
-                  {errors.email.message}
-                </p>
-              )}
-            </div>
-            <div className="mb-4 relative">
-              <label htmlFor="password" className="sr-only">
-                Password
-              </label>
-              <input
-                id="password"
-                type={showPassword ? "text" : "password"}
-                placeholder="Enter your password"
-                className="w-full px-4 py-3 border border-blue-100 rounded-lg bg-gray-50 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                {...register("password", { required: "Password is required" })}
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-3"
-              >
-                {showPassword ? (
-                  <EyeSlashIcon className="h-5 w-5 text-gray-400" />
-                ) : (
-                  <EyeIcon className="h-5 w-5 text-gray-400" />
-                )}
-              </button>
-              {errors.password && (
-                <p
-                  className="mt-1 text-sm text-red-500"
-                  style={{ color: "#EF4444" }}
-                >
-                  {errors.password.message}
-                </p>
-              )}
-            </div>
-            <div className="flex justify-between items-center mb-6">
-              <div className="flex items-center">
-                <input
-                  id="rememberMe"
-                  type="checkbox"
-                  className="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded"
-                  {...register("rememberMe")}
-                />
-                <label
-                  htmlFor="rememberMe"
-                  className="ml-2 text-sm text-gray-600"
-                >
-                  Remember me
+        </div>
+        <div className="flex-1 flex flex-col justify-center">
+          <div className="max-w-md w-full mx-auto">
+            <h2 className="text-3xl font-bold text-gray-900 mb-2">
+              Welcome Back!
+            </h2>
+            <p
+              className="text-sm mb-8"
+              style={{ color: "#9CA3AF" }} // Tailwind gray-400
+            >
+              Sign in to continue to Budget Tracker
+            </p>
+
+            <form onSubmit={handleSubmit(onSubmit)}>
+              <div className="mb-4 relative">
+                <label htmlFor="email" className="sr-only">
+                  Email
                 </label>
+                <input
+                  id="email"
+                  type="email"
+                  placeholder="test@gmail.com"
+                  className="w-full px-4 py-3 border border-blue-100 rounded-lg bg-gray-50 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  {...register("email", {
+                    required: "Email is required",
+                    pattern: { value: /^\S+@\S+$/i, message: "Invalid email" },
+                  })}
+                />
+                <EnvelopeIcon className="absolute right-3 top-3 h-5 w-5 text-gray-400" />
+                {errors.email && (
+                  <p
+                    className="mt-1 text-sm text-red-500"
+                    style={{ color: "#EF4444" }}
+                  >
+                    {errors.email.message}
+                  </p>
+                )}
               </div>
+              <div className="mb-4 relative">
+                <label htmlFor="password" className="sr-only">
+                  Password
+                </label>
+                <input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  placeholder="Enter your password"
+                  className="w-full px-4 py-3 border border-blue-100 rounded-lg bg-gray-50 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  {...register("password", {
+                    required: "Password is required",
+                  })}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-3"
+                >
+                  {showPassword ? (
+                    <EyeSlashIcon className="h-5 w-5 text-gray-400" />
+                  ) : (
+                    <EyeIcon className="h-5 w-5 text-gray-400" />
+                  )}
+                </button>
+                {errors.password && (
+                  <p
+                    className="mt-1 text-sm text-red-500"
+                    style={{ color: "#EF4444" }}
+                  >
+                    {errors.password.message}
+                  </p>
+                )}
+              </div>
+              <div className="flex justify-between items-center mb-6">
+                <div className="flex items-center">
+                  <input
+                    id="rememberMe"
+                    type="checkbox"
+                    className="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded"
+                    {...register("rememberMe")}
+                  />
+                  <label
+                    htmlFor="rememberMe"
+                    className="ml-2 text-sm text-gray-600"
+                  >
+                    Remember me
+                  </label>
+                </div>
+                <Link
+                  to="/reset-password"
+                  className="text-sm text-purple-600 hover:underline"
+                  style={{ color: "#6D28D9" }}
+                >
+                  Forgot Password?
+                </Link>
+              </div>
+              <button
+                type="submit"
+                className="w-full py-3 bg-purple-600 text-white font-semibold rounded-lg hover:bg-purple-700 transition-colors"
+                style={{ backgroundColor: "#6D28D9" }} // Fallback to ensure visibility
+              >
+                LOG IN
+              </button>
+              {error && (
+                <p
+                  className="mt-2 text-sm font-medium text-center"
+                  style={{ color: "#EF4444" }} // Tailwind red-500 hex
+                >
+                  {error}
+                </p>
+              )}
+            </form>
+            <p className="mt-4 text-center text-sm text-gray-600">
+              Don’t have an account?{" "}
               <Link
-                to="/reset-password"
-                className="text-sm text-purple-600 hover:underline"
+                to="/signup"
+                className="text-purple-600 hover:underline"
                 style={{ color: "#6D28D9" }}
               >
-                Forgot Password?
+                Sign Up
               </Link>
-            </div>
-            <button
-              type="submit"
-              className="w-full py-3 bg-purple-600 text-white font-semibold rounded-lg hover:bg-purple-700 transition-colors"
-              style={{ backgroundColor: "#6D28D9" }} // Fallback to ensure visibility
-            >
-              LOG IN
-            </button>
-            {error && (
-              <p className="mt-2 text-sm text-red-500 text-center">{error}</p>
-            )}
-          </form>
-          <p className="mt-4 text-center text-sm text-gray-600">
-            Don’t have an account?{" "}
-            <Link
-              to="/signup"
-              className="text-purple-600 hover:underline"
-              style={{ color: "#6D28D9" }}
-            >
-              Sign Up
-            </Link>
-          </p>
+            </p>
+          </div>
         </div>
       </div>
 
@@ -165,7 +196,7 @@ const Login: React.FC = () => {
         <img
           src={illustration}
           alt="Login Illustration"
-          className="max-h-[calc(100%-4rem)] w-auto"
+          className="max-h-[500px] max-w-[400px] w-auto"
         />
       </div>
     </div>
