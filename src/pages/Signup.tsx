@@ -47,8 +47,9 @@ const SignUp: React.FC = () => {
         body: JSON.stringify(data),
       });
       const result = await response.json();
-      if (response.ok) {
+      if (response.ok && result.token) {
         setError("");
+        localStorage.setItem("token", result.token);
         navigate("/dashboard");
       } else {
         setError(result.message);

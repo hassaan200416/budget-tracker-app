@@ -1,3 +1,4 @@
+// src/pages/Login.tsx
 import React, { useState } from "react";
 import { useForm, type SubmitHandler } from "react-hook-form";
 import { useNavigate, Link } from "react-router-dom";
@@ -6,9 +7,9 @@ import {
   EyeIcon,
   EyeSlashIcon,
 } from "@heroicons/react/24/outline";
-import logo from "../assets/images/logo.png"; // Updated path
-import illustration from "../assets/images/login-illustration.png"; // Updated path
-import separatorLine from "../assets/images/separator-line.png"; // Updated path
+import logo from "../assets/images/logo.png";
+import illustration from "../assets/images/login-illustration.png";
+import separatorLine from "../assets/images/separator-line.png";
 
 type LoginForm = {
   email: string;
@@ -31,16 +32,17 @@ const Login: React.FC = () => {
       const response = await fetch("http://localhost:5000/api/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
+        body: JSON.stringify({ email: data.email, password: data.password }),
       });
       const result = await response.json();
-      if (response.ok) {
+      if (response.ok && result.token) {
         setError("");
+        localStorage.setItem("token", result.token);
         navigate("/dashboard");
       } else {
-        setError(result.message);
+        setError(result.message || "Invalid credentials");
       }
-    } catch (error) {
+    } catch (e) {
       setError("Server error");
     }
   };

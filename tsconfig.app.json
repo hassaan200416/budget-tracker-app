@@ -26,7 +26,11 @@
     /* Additional Options */
     "forceConsistentCasingInFileNames": true, // Ensures casing consistency to fix import errors
     "esModuleInterop": true, // Helps with CommonJS/ES6 interop
-    "resolveJsonModule": true // Allows importing .json files if needed later
+    "resolveJsonModule": true, // Allows importing .json files if needed later
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"]
+    }
   },
   "include": ["src"]
 }
