@@ -1,114 +1,155 @@
 // src/components/Header.tsx
 import React, { useState } from "react";
-import { Menu } from "@headlessui/react";
 import { useNavigate } from "react-router-dom";
 import { BellIcon } from "@heroicons/react/24/outline";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import profileIcon from "../assets/images/hamburger-profile.png";
 import logoutIcon from "../assets/images/hamburger-logout.png";
 import menuIcon from "../assets/images/hamburger-menu.png";
 import NotificationDropdown from "./NotificationDropdown";
 
+interface Notification {
+  id: string;
+  message: string;
+  type: "add" | "edit" | "delete";
+  createdAt: number;
+  timestamp: string;
+  isRead: boolean;
+}
+
 interface HeaderProps {
-  user: { name: string; email: string };
+  user: { firstName: string; lastName: string; email: string };
   onLogout: () => void;
-  notifications: string[];
-  hasUnread?: boolean;
-  onNotificationsOpened?: () => void;
+  notifications: Notification[];
+  onNotificationClick?: (notificationId: string) => void;
+  onMarkAllAsRead?: () => void;
   toggleExpanded: () => void;
+  sidebarExpanded: boolean;
 }
 
 const Header: React.FC<HeaderProps> = ({
   user,
   onLogout,
   notifications,
-  hasUnread,
-  onNotificationsOpened,
+  onNotificationClick,
+  onMarkAllAsRead,
   toggleExpanded,
+  sidebarExpanded,
 }) => {
   const navigate = useNavigate();
   const [showNotifications, setShowNotifications] = useState(false);
 
+  // Close notifications when clicking outside
+  React.useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Element;
+      if (!target.closest(".notification-container")) {
+        setShowNotifications(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handleBellClick = () => {
+    // Mark all notifications as read when bell is clicked
+    if (notifications.some((n) => !n.isRead) && onMarkAllAsRead) {
+      onMarkAllAsRead();
+    }
+    setShowNotifications(!showNotifications);
+  };
+
   return (
-    <div className="bg-white px-6 py-4 flex items-center justify-between border-b border-gray-200">
+    <div 
+      className="fixed top-0 right-0 bg-white px-6 py-4 flex items-center justify-between border-b border-gray-200 z-40"
+      style={{ 
+        left: sidebarExpanded ? '18rem' : '6rem',
+        transition: 'left 0.3s ease'
+      }}
+    >
       <div className="flex items-center">
-        <img
-          src={menuIcon}
-          alt="Menu"
-          className="h-6 w-6 cursor-pointer"
+        <Button
+          variant="ghost"
+          size="icon"
           onClick={toggleExpanded}
-        />
+          className="h-6 w-6 p-0 hover:bg-transparent focus:bg-transparent"
+        >
+          <img src={menuIcon} alt="Menu" className="h-6 w-6" />
+        </Button>
       </div>
       <div className="flex items-center space-x-4">
-        <div className="relative">
-          <BellIcon
-            className="h-6 w-6 cursor-pointer text-gray-600"
-            onClick={() => {
-              const next = !showNotifications;
-              setShowNotifications(next);
-              if (next && onNotificationsOpened) onNotificationsOpened();
-            }}
-          />
-          {hasUnread && notifications.length > 0 && (
-            <span className="absolute -top-1 -right-1 h-3 w-3 bg-red-500 rounded-full" />
+        <div className="relative notification-container">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleBellClick}
+            className="h-6 w-6 p-0 text-gray-600 hover:text-gray-800"
+          >
+            <BellIcon className="h-6 w-6" />
+          </Button>
+          {/* Notification indicator - positioned outside button for better visibility */}
+          {notifications.some((n) => !n.isRead) && (
+            <span
+              className="absolute -top-1 -right-1 h-4 w-4 rounded-full z-20 border-2 border-white shadow-lg animate-pulse"
+              style={{
+                backgroundColor: "#dc2626",
+                minWidth: "16px",
+                minHeight: "16px",
+              }}
+            />
           )}
           {showNotifications && (
-            <NotificationDropdown notifications={notifications} />
+            <NotificationDropdown
+              notifications={notifications}
+              onNotificationClick={onNotificationClick}
+            />
           )}
         </div>
-        <Menu as="div" className="relative">
-          <Menu.Button className="flex items-center justify-center h-8 w-8 rounded-full bg-purple-600 text-white text-lg font-medium">
-            {user.name.charAt(0).toUpperCase()}
-          </Menu.Button>
-          <Menu.Items className="absolute right-0 mt-2 w-56 bg-white shadow-md rounded-md border border-gray-200">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 rounded-full bg-purple-600 text-white text-lg font-medium hover:bg-purple-700"
+            >
+              {user.firstName.charAt(0).toUpperCase()}
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent className="w-56">
             <div className="flex items-center p-3 border-b border-gray-200">
               <div className="flex items-center justify-center h-8 w-8 rounded-full bg-purple-600 text-white text-lg font-medium mr-3">
-                {user.name.charAt(0).toUpperCase()}
+                {user.firstName.charAt(0).toUpperCase()}
               </div>
               <div>
-                <p className="font-semibold text-gray-800">{user.name}</p>
+                <p className="font-semibold text-gray-800">
+                  {user.firstName} {user.lastName}
+                </p>
                 <p className="text-sm text-gray-500">{user.email}</p>
               </div>
             </div>
-            <Menu.Item>
-              {({ active }) => (
-                <button
-                  className={`w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 ${
-                    active ? "bg-gray-100" : ""
-                  }`}
-                  onClick={() => navigate("/profile")}
-                >
-                  <span className="inline-flex items-center">
-                    <img
-                      src={profileIcon}
-                      alt="Profile"
-                      className="h-4 w-4 mr-2"
-                    />
-                    Profile
-                  </span>
-                </button>
-              )}
-            </Menu.Item>
-            <Menu.Item>
-              {({ active }) => (
-                <button
-                  className={`w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 ${
-                    active ? "bg-gray-100" : ""
-                  }`}
-                  onClick={onLogout}
-                >
-                  <span className="inline-flex items-center">
-                    <img
-                      src={logoutIcon}
-                      alt="Logout"
-                      className="h-4 w-4 mr-2"
-                    />
-                    Logout
-                  </span>
-                </button>
-              )}
-            </Menu.Item>
-          </Menu.Items>
-        </Menu>
+            <DropdownMenuItem
+              className="flex items-center px-4 py-2 text-sm text-gray-700 cursor-pointer"
+              onClick={() => navigate("/profile")}
+            >
+              <img src={profileIcon} alt="Profile" className="h-4 w-4 mr-2" />
+              Profile
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              className="flex items-center px-4 py-2 text-sm text-gray-700 cursor-pointer"
+              onClick={onLogout}
+            >
+              <img src={logoutIcon} alt="Logout" className="h-4 w-4 mr-2" />
+              Logout
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </div>
   );

@@ -6,6 +6,7 @@ import {
   EyeIcon,
   EyeSlashIcon,
 } from "@heroicons/react/24/outline";
+import { useAuth } from "../context/AuthContext";
 import logo from "../assets/images/logo.png"; // Confirm file name/path
 import separatorLine from "../assets/images/separator-line.png"; // Confirm file name/path
 import illustration from "../assets/images/signup-illustration.png"; // Confirm file name/path
@@ -23,39 +24,39 @@ const SignUp: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
+  const { signup } = useAuth();
   const {
     register,
     handleSubmit,
     formState: { errors },
     watch,
+    reset,
   } = useForm<SignUpForm>();
 
   const password = watch("password");
-  const confirmPassword = watch("confirmPassword");
 
-  // Explicitly use confirmPassword to satisfy TypeScript (no-op for now)
-  // Intent: This value is used in the confirmPassword validation to match with password
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const _ = confirmPassword;
+  // Reset form when component mounts (after logout)
+  React.useEffect(() => {
+    reset();
+    setError("");
+    setIsLoading(false);
+  }, [reset]);
+
+  // confirmPassword is read from watch and used directly in validation; no local alias needed
 
   const onSubmit: SubmitHandler<SignUpForm> = async (data) => {
     try {
-      const response = await fetch("http://localhost:5000/api/signup", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-      const result = await response.json();
-      if (response.ok && result.token) {
-        setError("");
-        localStorage.setItem("token", result.token);
-        navigate("/dashboard");
-      } else {
-        setError(result.message);
-      }
-    } catch (error) {
-      setError("Server error");
+      setIsLoading(true);
+      setError("");
+      await signup(data);
+      // Redirect to login page instead of dashboard after successful signup
+      navigate("/login");
+    } catch (error: any) {
+      setError(error.message || "Signup failed");
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -88,7 +89,7 @@ const SignUp: React.FC = () => {
                   id="firstName"
                   type="text"
                   placeholder="First Name"
-                  className="w-full px-4 py-3 border border-blue-100 rounded-lg bg-gray-50 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  className="w-full px-4 py-3 border border-blue-100 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-purple-500"
                   {...register("firstName", {
                     required: "First Name is required",
                   })}
@@ -110,7 +111,7 @@ const SignUp: React.FC = () => {
                   id="lastName"
                   type="text"
                   placeholder="Last Name"
-                  className="w-full px-4 py-3 border border-blue-100 rounded-lg bg-gray-50 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  className="w-full px-4 py-3 border border-blue-100 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-purple-500"
                   {...register("lastName", {
                     required: "Last Name is required",
                   })}
@@ -133,7 +134,7 @@ const SignUp: React.FC = () => {
                 id="email"
                 type="email"
                 placeholder="test@gmail.com"
-                className="w-full px-4 py-3 border border-blue-100 rounded-lg bg-gray-50 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                className="w-full px-4 py-3 border border-blue-100 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-purple-500"
                 {...register("email", {
                   required: "Email is required",
                   pattern: { value: /^\S+@\S+$/i, message: "Invalid email" },
@@ -157,7 +158,7 @@ const SignUp: React.FC = () => {
                 id="password"
                 type={showPassword ? "text" : "password"}
                 placeholder="Enter your password"
-                className="w-full px-4 py-3 border border-blue-100 rounded-lg bg-gray-50 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                className="w-full px-4 py-3 border border-blue-100 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-purple-500"
                 {...register("password", { required: "Password is required" })}
               />
               <button
@@ -188,7 +189,7 @@ const SignUp: React.FC = () => {
                 id="confirmPassword"
                 type={showConfirmPassword ? "text" : "password"}
                 placeholder="Confirm your password"
-                className="w-full px-4 py-3 border border-blue-100 rounded-lg bg-gray-50 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                className="w-full px-4 py-3 border border-blue-100 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-purple-500"
                 {...register("confirmPassword", {
                   required: "Confirm Password is required",
                   validate: (value) =>
@@ -223,7 +224,7 @@ const SignUp: React.FC = () => {
                 id="budgetLimit"
                 type="number"
                 placeholder="Budget Limit"
-                className="w-full px-4 py-3 border border-blue-100 rounded-lg bg-gray-50 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                className="w-full px-4 py-3 border border-blue-100 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-purple-500"
                 {...register("budgetLimit", {
                   required: "Budget Limit is required",
                   min: { value: 0, message: "Must be a positive number" },
@@ -240,10 +241,11 @@ const SignUp: React.FC = () => {
             </div>
             <button
               type="submit"
-              className="w-full py-3 bg-purple-600 text-white font-semibold rounded-lg hover:bg-purple-700 transition-colors"
+              disabled={isLoading}
+              className="w-full py-3 bg-purple-600 text-white font-semibold rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               style={{ backgroundColor: "#6D28D9" }}
             >
-              SIGN UP
+              {isLoading ? "SIGNING UP..." : "SIGN UP"}
             </button>
             {error && (
               <p className="mt-2 text-sm text-red-500 text-center">{error}</p>

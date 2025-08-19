@@ -1,16 +1,18 @@
 // src/pages/Login.tsx
 import React, { useState } from "react";
 import { useForm, type SubmitHandler } from "react-hook-form";
-import { useNavigate, Link } from "react-router-dom";
+import { Link } from "react-router-dom";
 import {
   EnvelopeIcon,
   EyeIcon,
   EyeSlashIcon,
 } from "@heroicons/react/24/outline";
+import { useAuth } from "../context/AuthContext";
 import logo from "../assets/images/logo.png";
 import illustration from "../assets/images/login-illustration.png";
 import separatorLine from "../assets/images/separator-line.png";
 
+// Form data structure for login
 type LoginForm = {
   email: string;
   password: string;
@@ -18,38 +20,116 @@ type LoginForm = {
 };
 
 const Login: React.FC = () => {
+  // UI State - controls password visibility, error messages, and loading
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
-  const navigate = useNavigate();
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Get authentication functions from context
+  const { login, logoutCounter } = useAuth();
+
+  // React Hook Form setup for form handling and validation
   const {
     register,
     handleSubmit,
     formState: { errors },
+    reset,
   } = useForm<LoginForm>();
 
+  // Reset form when component mounts or after logout
+  React.useEffect(() => {
+    // Clear all form data and error states
+    reset();
+    setError("");
+    setIsLoading(false);
+
+    // Reset the actual HTML form element
+    const form = document.querySelector("form");
+    if (form) {
+      form.reset();
+    }
+
+    // Focus on email input for better user experience
+    const emailInput = document.getElementById("email");
+    if (emailInput) {
+      emailInput.focus();
+    }
+
+    // Safety: ensure any leftover modal overlays are removed after redirects
+    // This handles rare cases where a dialog portal overlay might persist across navigation
+    const cleanupOverlays = () => {
+      // Remove common overlay elements (fixed full-screen with high z-index)
+      const overlays = Array.from(
+        document.querySelectorAll(
+          'div[class*="fixed"][class*="inset-0"][class*="z-50"]'
+        )
+      );
+      overlays.forEach((el) => {
+        // Only remove if it's an overlay element, not legitimate page content
+        const hasBackdrop = (el as HTMLElement).className.includes("bg-black/");
+        if (hasBackdrop) {
+          el.remove();
+        }
+      });
+      // Also ensure body interactions are enabled
+      document.body.style.pointerEvents = "auto";
+      document.documentElement.style.pointerEvents = "auto";
+    };
+    // Run immediately and on next tick to catch async portal unmounts
+    cleanupOverlays();
+    const raf = requestAnimationFrame(cleanupOverlays);
+
+    // Cleanup function to ensure proper state management
+    return () => {
+      setError("");
+      setIsLoading(false);
+      cancelAnimationFrame(raf);
+    };
+  }, [reset, logoutCounter]); // Reset when logoutCounter changes (after logout)
+
+  // Handle form submission - attempt to log in user
   const onSubmit: SubmitHandler<LoginForm> = async (data) => {
     try {
-      const response = await fetch("http://localhost:5000/api/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: data.email, password: data.password }),
-      });
-      const result = await response.json();
-      if (response.ok && result.token) {
-        setError("");
-        localStorage.setItem("token", result.token);
-        navigate("/dashboard");
-      } else {
-        setError(result.message || "Invalid credentials");
-      }
-    } catch (e) {
-      setError("Server error");
+      setIsLoading(true);
+      setError("");
+
+      // Call login function from auth context
+      await login(data.email, data.password, data.rememberMe);
+      // Navigation is handled automatically by the routing system
+    } catch (error: any) {
+      // Display error message if login fails
+      setError(error.message || "Login failed");
+    } finally {
+      setIsLoading(false);
     }
   };
 
   return (
     <div className="flex h-screen bg-white font-poppins">
-      {/* Left: Form Section */}
+      {/* Custom CSS for checkbox styling */}
+      <style>
+        {`
+          /* Custom checkbox styling for remember me */
+          #rememberMe {
+            background-color: white !important;
+            border: 1px solid #d1d5db !important;
+            border-radius: 4px !important;
+            appearance: none !important;
+            -webkit-appearance: none !important;
+            -moz-appearance: none !important;
+          }
+          #rememberMe:checked {
+            background-color: #7c3aed !important;
+            border-color: #7c3aed !important;
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3e%3cpath fill='white' d='M16.707 5.293a1 1 0 00-1.414-1.414L7 12.172 4.707 9.879a1 1 0 10-1.414 1.414l3 3a1 1 0 001.414 0l9-9z'/%3e%3c/svg%3e") !important;
+            background-size: 12px 12px !important;
+            background-position: center !important;
+            background-repeat: no-repeat !important;
+          }
+        `}
+      </style>
+
+      {/* Left side: Login form */}
       <div className="flex-1 flex flex-col px-8 md:px-16">
         <div className="pt-8">
           <div className="max-w-md w-full mx-auto">
@@ -86,7 +166,7 @@ const Login: React.FC = () => {
                   id="email"
                   type="email"
                   placeholder="test@gmail.com"
-                  className="w-full px-4 py-3 border border-blue-100 rounded-lg bg-gray-50 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  className="w-full px-4 py-3 border border-blue-100 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-purple-500"
                   {...register("email", {
                     required: "Email is required",
                     pattern: { value: /^\S+@\S+$/i, message: "Invalid email" },
@@ -110,7 +190,7 @@ const Login: React.FC = () => {
                   id="password"
                   type={showPassword ? "text" : "password"}
                   placeholder="Enter your password"
-                  className="w-full px-4 py-3 border border-blue-100 rounded-lg bg-gray-50 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  className="w-full px-4 py-3 border border-blue-100 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-purple-500"
                   {...register("password", {
                     required: "Password is required",
                   })}
@@ -137,17 +217,17 @@ const Login: React.FC = () => {
               </div>
               <div className="flex justify-between items-center mb-6">
                 <div className="flex items-center">
-                  <input
-                    id="rememberMe"
-                    type="checkbox"
-                    className="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded"
-                    {...register("rememberMe")}
-                  />
                   <label
                     htmlFor="rememberMe"
-                    className="ml-2 text-sm text-gray-600"
+                    className="inline-flex items-center cursor-pointer"
                   >
-                    Remember me
+                    <input
+                      id="rememberMe"
+                      type="checkbox"
+                      {...register("rememberMe")}
+                      className="mr-2 h-4 w-4 cursor-pointer"
+                    />
+                    <span className="text-sm text-gray-600">Remember me</span>
                   </label>
                 </div>
                 <Link
@@ -160,10 +240,11 @@ const Login: React.FC = () => {
               </div>
               <button
                 type="submit"
-                className="w-full py-3 bg-purple-600 text-white font-semibold rounded-lg hover:bg-purple-700 transition-colors"
+                disabled={isLoading}
+                className="w-full py-3 bg-purple-600 text-white font-semibold rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 style={{ backgroundColor: "#6D28D9" }} // Fallback to ensure visibility
               >
-                LOG IN
+                {isLoading ? "LOGGING IN..." : "LOG IN"}
               </button>
               {error && (
                 <p

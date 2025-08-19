@@ -6,7 +6,11 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogFooter,
 } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 // Define Expense interface here
 interface Expense {
@@ -61,59 +65,64 @@ const AddEditModal: React.FC<AddEditModalProps> = ({
           </DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit(submit)}>
-          <input
-            {...register("title", { required: true })}
-            placeholder="Title"
-            className="border border-gray-200 rounded p-2 mb-4 w-full focus:outline-none focus:border-purple-500"
-          />
-          {errors.title && (
-            <p className="text-red-500 text-sm mb-2">Title is required</p>
-          )}
-          <div className="flex gap-3">
-            <div className="flex-1">
-              <input
-                type="number"
-                {...register("price", { required: true, min: 0 })}
-                placeholder="Price(PKR)"
-                className="border border-gray-200 rounded p-2 mb-4 w-full focus:outline-none focus:border-purple-500"
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="title">Title</Label>
+              <Input
+                id="title"
+                {...register("title", { required: true })}
+                placeholder="Enter expense title"
+                className="w-full"
               />
-              {errors.price && (
-                <p className="text-red-500 text-sm mb-2">
-                  Price is required and must be positive
-                </p>
+              {errors.title && (
+                <p className="text-red-500 text-sm mt-1">Title is required</p>
               )}
             </div>
-            <div className="flex-1">
-              <input
-                type="date"
-                {...register("date", { required: true })}
-                className="border border-gray-200 rounded p-2 mb-4 w-full focus:outline-none focus:border-purple-500"
-              />
-              {errors.date && (
-                <p className="text-red-500 text-sm mb-2">Date is required</p>
-              )}
+            <div className="flex gap-3">
+              <div className="flex-1">
+                <Label htmlFor="price">Price (PKR)</Label>
+                <Input
+                  id="price"
+                  type="number"
+                  {...register("price", { required: true, min: 0 })}
+                  placeholder="Enter amount"
+                  className="w-full"
+                />
+                {errors.price && (
+                  <p className="text-red-500 text-sm mt-1">
+                    Price is required and must be positive
+                  </p>
+                )}
+              </div>
+              <div className="flex-1">
+                <Label htmlFor="date">Date</Label>
+                <div className="relative">
+                  <Input
+                    id="date"
+                    type="date"
+                    {...register("date", { required: true })}
+                    className="w-full [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:right-2 [&::-webkit-calendar-picker-indicator]:top-1/2 [&::-webkit-calendar-picker-indicator]:transform [&::-webkit-calendar-picker-indicator]:-translate-y-1/2"
+                  />
+                </div>
+                {errors.date && (
+                  <p className="text-red-500 text-sm mt-1">Date is required</p>
+                )}
+              </div>
             </div>
           </div>
-          <div className="flex justify-end space-x-2 pt-2">
-            <button
+          <DialogFooter className="mt-6 flex justify-between">
+            <Button
               type="button"
+              variant="outline"
               onClick={onClose}
-              className="bg-gray-100 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-200"
+              className="flex-1 mr-2"
             >
               Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={!isValid}
-              className={`px-4 py-2 rounded-md ${
-                isValid
-                  ? "bg-purple-600 text-white hover:bg-purple-700"
-                  : "bg-gray-300 text-gray-500 cursor-not-allowed"
-              }`}
-            >
+            </Button>
+            <Button type="submit" disabled={!isValid} className="flex-1">
               {mode === "add" ? "Add" : "Save Changes"}
-            </button>
-          </div>
+            </Button>
+          </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>

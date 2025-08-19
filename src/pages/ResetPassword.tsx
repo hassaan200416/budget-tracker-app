@@ -19,7 +19,7 @@ const ResetPassword: React.FC = () => {
     formState: { errors },
   } = useForm<ResetPasswordForm>();
 
-  const onSubmit: SubmitHandler<ResetPasswordForm> = (data) => {
+  const onSubmit: SubmitHandler<ResetPasswordForm> = (_data) => {
     // Use data.email to simulate processing the submitted email
     // Intent: This is dummy logic; in a real app, this would trigger an email send
     setSuccess(true);
@@ -65,7 +65,7 @@ const ResetPassword: React.FC = () => {
                   id="email"
                   type="email"
                   placeholder="test@gmail.com"
-                  className="w-full px-4 py-3 border border-blue-100 rounded-lg bg-gray-50 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  className="w-full px-4 py-3 border border-blue-100 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-purple-500"
                   {...register("email", {
                     required: "Email is required",
                     pattern: { value: /^\S+@\S+$/i, message: "Invalid email" },

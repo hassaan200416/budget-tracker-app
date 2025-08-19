@@ -1,13 +1,16 @@
 // src/components/DeleteModal.tsx
 import React from "react";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
 
-// Define Expense interface here
 interface Expense {
   id: string;
   title: string;
@@ -28,30 +31,37 @@ const DeleteModal: React.FC<DeleteModalProps> = ({
   onClose,
 }) => {
   return (
-    <Dialog open={true} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[425px]">
-        <DialogHeader>
-          <DialogTitle>Delete Expense</DialogTitle>
-        </DialogHeader>
-        <p className="mb-2">Title: {expense.title}</p>
-        <p className="mb-2">Price: {expense.price.toLocaleString()} PKR</p>
-        <p className="mb-4">Date: {expense.date}</p>
-        <div className="flex justify-end space-x-2">
-          <button
-            onClick={onClose}
-            className="bg-gray-100 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-200"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={onDelete}
-            className="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700"
-          >
-            Delete
-          </button>
+    <AlertDialog open={true} onOpenChange={onClose}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Delete Expense</AlertDialogTitle>
+          <AlertDialogDescription>
+            Are you sure you want to delete this expense? This action cannot be
+            undone.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <div className="bg-gray-50 p-4 rounded-md space-y-2">
+          <div className="flex justify-between">
+            <span className="font-medium">Title:</span>
+            <span>{expense.title}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="font-medium">Price(PKR):</span>
+            <span>{expense.price.toLocaleString()}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="font-medium">Date:</span>
+            <span>{expense.date}</span>
+          </div>
         </div>
-      </DialogContent>
-    </Dialog>
+        <AlertDialogFooter className="flex justify-between">
+          <AlertDialogCancel className="flex-1 mr-2">Cancel</AlertDialogCancel>
+          <Button onClick={onDelete} variant="destructive" className="flex-1">
+            Delete
+          </Button>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 };
 

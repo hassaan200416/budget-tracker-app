@@ -1,33 +1,38 @@
 // src/components/Sidebar.tsx
 import React from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
+import { Button } from "@/components/ui/button";
 import logo from "../assets/images/logo.png";
-import menuIcon from "../assets/images/hamburger-menu.png"; // 3 lines
 import analysisIcon from "../assets/images/hamburger-analysis.png";
 import expensesIcon from "../assets/images/hamburger-expenses.png";
 import logoutIcon from "../assets/images/hamburger-logout.png";
 
 interface SidebarProps {
   expanded: boolean;
-  toggleExpanded: () => void;
   onLogout: () => void;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({
-  expanded,
-  toggleExpanded,
-  onLogout,
-}) => {
+const Sidebar: React.FC<SidebarProps> = ({ expanded, onLogout }) => {
   const navigate = useNavigate();
+  const location = useLocation();
+
+  const isAnalysisActive = location.pathname.startsWith("/analysis");
+  const isExpensesActive = location.pathname.startsWith("/dashboard");
+
+  const baseBtn =
+    "flex items-center px-4 py-3 rounded-md justify-start transition-colors";
+  const activeClasses = "bg-purple-600 text-white hover:bg-purple-700";
+  const inactiveClasses =
+    "text-gray-700 hover:bg-accent hover:text-accent-foreground";
 
   return (
     <div
-      className={`h-full transition-all duration-300 ${
+      className={`fixed left-0 top-0 h-full transition-all duration-300 ${
         expanded ? "w-72" : "w-24"
-      } p-4 flex flex-col border-r border-gray-200`}
+      } p-4 flex flex-col border-r border-gray-200 z-50`}
       style={{ backgroundColor: "#f3f4f6" }}
     >
-      <div className="flex items-center mb-10">
+      <div className="flex items-center mb-4">
         <img src={logo} alt="Logo" className="h-8 w-10" />
         {expanded && (
           <span className="ml-6 text-xl font-bold text-gray-800">
@@ -35,28 +40,49 @@ const Sidebar: React.FC<SidebarProps> = ({
           </span>
         )}
       </div>
+      <div className="border-b border-gray-200 mb-6 -mx-4"></div>
       <div className="flex flex-col space-y-2">
-        <button
-          className={`flex items-center px-4 py-3 rounded-md text-gray-700 hover:bg-gray-100`}
+        <Button
+          variant="ghost"
+          className={`${baseBtn} ${
+            isAnalysisActive ? activeClasses : inactiveClasses
+          }`}
           onClick={() => navigate("/analysis")}
         >
-          <img src={analysisIcon} alt="Analysis" className="h-5 w-5" />
+          <img
+            src={analysisIcon}
+            alt="Analysis"
+            className="h-6 w-6 shrink-0 object-contain"
+          />
           {expanded && <span className="ml-3">Analysis</span>}
-        </button>
-        <button
-          className={`flex items-center px-4 py-3 rounded-md bg-purple-600 text-white`}
+        </Button>
+        <Button
+          variant="ghost"
+          className={`${baseBtn} ${
+            isExpensesActive ? activeClasses : inactiveClasses
+          }`}
           onClick={() => navigate("/dashboard")}
         >
-          <img src={expensesIcon} alt="Expenses" className="h-5 w-5" />
+          {/* Scale up to compensate for transparent padding in the PNG */}
+          <img
+            src={expensesIcon}
+            alt="Expenses"
+            className="h-6 w-6 shrink-0 object-contain origin-center scale-[2.3]"
+          />
           {expanded && <span className="ml-3">Expenses</span>}
-        </button>
-        <button
-          className={`flex items-center px-4 py-3 rounded-md text-gray-700 hover:bg-gray-100`}
+        </Button>
+        <Button
+          variant="ghost"
+          className={`${baseBtn} ${inactiveClasses}`}
           onClick={onLogout}
         >
-          <img src={logoutIcon} alt="Logout" className="h-5 w-5" />
+          <img
+            src={logoutIcon}
+            alt="Logout"
+            className="h-6 w-6 shrink-0 object-contain"
+          />
           {expanded && <span className="ml-3">Logout</span>}
-        </button>
+        </Button>
       </div>
     </div>
   );
