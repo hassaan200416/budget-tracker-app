@@ -8,7 +8,7 @@ const connectDB = async () => {
     console.log('MongoDB connected');
   } catch (error) {
     console.error('MongoDB connection error:', error);
-    process.exit(1);
+    process.exit(1);//prevents the server from starting without a database.
   }
 };
 
