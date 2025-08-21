@@ -1,3 +1,9 @@
+/**
+ * MongoDB connection helper
+ *
+ * Encapsulates the initial Mongoose connection and ensures the process exits
+ * if a connection cannot be established (to avoid running a half-broken API).
+ */
 import mongoose from 'mongoose';
 
 const connectDB = async () => {

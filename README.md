@@ -15,6 +15,8 @@ A comprehensive Node.js/Express backend for the Budget Tracking App, built with 
 - **Testing**: Jest with MongoDB Memory Server
 - **Development**: Nodemon for hot reloading
 
+Note: Validation is handled primarily via Mongoose schemas in this project.
+
 ## Project Structure
 
 ```
@@ -53,18 +55,16 @@ src/
 
 ### 🔔 Notification System
 
-- **Real-time Updates**: Instant notifications for expense operations
-- **Operation Tracking**: Add, edit, and delete notifications
-- **User-specific**: Notifications are isolated per user
-- **Auto-cleanup**: Notifications cleared on server restart
+- Stored notifications created on expense add/edit/delete
+- User-scoped; latest 50 returned, unread count supported
+- Auto-cleanup on server restart (all notifications cleared at boot)
 
 ### 🛡️ Security Features
 
-- **CORS Protection**: Configured for frontend origin
-- **Input Validation**: Zod schema validation
-- **SQL Injection Protection**: Mongoose ODM protection
-- **Rate Limiting**: Built-in Express protection
-- **Environment Variables**: Secure configuration management
+- **CORS**: Frontend origin must match server configuration (see below)
+- **Password Hashing**: bcrypt with per-user salt
+- **JWT**: Signed tokens with user id and role
+- **Env Config**: Secrets and connection strings via `.env`
 
 ## API Endpoints
 
@@ -73,6 +73,7 @@ src/
 - `POST /signup` - User registration
 - `POST /login` - User authentication
 - `GET /profile` - Get user profile (protected)
+- `PUT /profile` - Update user profile (protected)
 
 ### Expense Routes (`/api/entries`) - Protected
 
@@ -138,6 +139,12 @@ MONGODB_URI=mongodb://localhost:27017/budget-app
 JWT_SECRET=your-super-secret-jwt-key
 PORT=5000
 NODE_ENV=development
+```
+
+The server enables CORS for a single origin. Update `src/server.ts`:
+
+```ts
+app.use(cors({ origin: "http://localhost:5173", credentials: true }));
 ```
 
 ## Installation & Setup
@@ -246,6 +253,33 @@ Content-Type: application/json
 }
 ```
 
+### Profile Operations
+
+**Get Profile**
+
+```http
+GET /api/profile
+Authorization: Bearer <jwt-token>
+```
+
+**Update Profile**
+
+```http
+PUT /api/profile
+Authorization: Bearer <jwt-token>
+Content-Type: application/json
+
+{
+  "firstName": "John",
+  "lastName": "Doe",
+  "email": "john@example.com",
+  "budgetLimit": 2000,
+  "jobTitle": "Engineer",
+  "phoneNumber": "123-456-7890",
+  "profileImageUrl": "data:image/png;base64,...." // or null to remove
+}
+```
+
 ## Error Handling
 
 The API uses consistent error responses:
@@ -268,8 +302,7 @@ Common error codes:
 
 - **Password Hashing**: bcrypt with salt rounds
 - **JWT Security**: Secure token generation and validation
-- **Input Validation**: Zod schema validation for all inputs
-- **CORS Configuration**: Restricted to frontend origin
+- **CORS Configuration**: Restricted to the frontend origin
 - **Environment Variables**: Sensitive data in .env files
 - **Database Indexing**: Optimized queries with proper indexes
 
@@ -299,7 +332,7 @@ npm test
 - Implement rate limiting
 - Use HTTPS in production
 
-### Docker Support
+### Docker (example)
 
 ```dockerfile
 FROM node:18-alpine

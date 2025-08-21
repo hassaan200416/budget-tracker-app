@@ -1,3 +1,8 @@
+/**
+ * Notification routes
+ *
+ * Protected endpoints for listing notifications and updating read status.
+ */
 import express from 'express';
 import {
   getUserNotifications,

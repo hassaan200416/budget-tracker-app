@@ -1,3 +1,9 @@
+/**
+ * Notification controller
+ *
+ * Lightweight endpoints to fetch, mark single/read-all, and count unread
+ * notifications scoped to the authenticated user.
+ */
 import express from 'express';
 import Notification, { INotification } from '../models/Notification';
 import expressAsyncHandler = require('express-async-handler');

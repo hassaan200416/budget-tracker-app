@@ -1,3 +1,9 @@
+/**
+ * Entry model
+ *
+ * Represents a single expense entry, linked to a user. Adds createdAt/updatedAt
+ * timestamps and indexes userId for efficient per-user queries.
+ */
 import mongoose, { Document, Schema } from 'mongoose';
 
 export interface IEntry extends Document {
@@ -11,7 +17,7 @@ export interface IEntry extends Document {
   updatedAt: Date;
 }
 
-//links entries to the user who created them.
+// Links entries to the user who created them
 const entrySchema: Schema<IEntry> = new mongoose.Schema({
   userId: { 
     type: mongoose.Schema.Types.ObjectId, 

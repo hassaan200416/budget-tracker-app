@@ -1,3 +1,9 @@
+/**
+ * Auth controller
+ *
+ * Handles signup and login. Password hashing is managed by the User model
+ * pre-save hook; tokens include user id and role with a short expiry.
+ */
 import express from 'express';
 import User, { IUser } from '../models/User';
 import jwt from 'jsonwebtoken';
@@ -7,6 +13,9 @@ import { Request, Response } from 'express';
 
 dotenv.config();
 
+/**
+ * Issues a signed JWT used by the frontend for subsequent authenticated calls.
+ */
 const generateToken = (id: string, role: string) => {
   return jwt.sign({ id, role }, process.env.JWT_SECRET!, { expiresIn: '1h' });
 };
@@ -64,27 +73,4 @@ export const login = expressAsyncHandler(async (req: Request, res: Response) => 
   });
 });
 
-export const getProfile = expressAsyncHandler(async (req: Request, res: Response) => {
-  // The user ID is available from the auth middleware
-  const userId = (req as any).user?.id;
-  
-  if (!userId) {
-    res.status(401).json({ message: 'Not authenticated' });
-    return;
-  }
-
-  const user = await User.findById(userId).select('-password');
-  if (!user) {
-    res.status(404).json({ message: 'User not found' });
-    return;
-  }
-
-  res.json({
-    _id: user._id,
-    firstName: user.firstName,
-    lastName: user.lastName,
-    email: user.email,
-    budgetLimit: user.budgetLimit,
-    role: user.role
-  });
-});
+// Profile handlers moved to profileController

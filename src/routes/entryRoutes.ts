@@ -1,3 +1,9 @@
+/**
+ * Entry routes
+ *
+ * All routes are protected and map directly to controller methods. Note that
+ * the analysis endpoint is declared before the :id route to avoid conflicts.
+ */
 import express from 'express';
 import {
   getUserEntries,

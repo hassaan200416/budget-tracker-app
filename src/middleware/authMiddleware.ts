@@ -1,3 +1,10 @@
+/**
+ * Authentication middleware
+ *
+ * Verifies a Bearer JWT, attaches the minimal user identity to req.user,
+ * and rejects requests with invalid/missing tokens. Downstream handlers
+ * can rely on req.user being present when this middleware is applied.
+ */
 import jwt from 'jsonwebtoken';
 import { Request, Response, NextFunction } from 'express';
 import User from '../models/User';

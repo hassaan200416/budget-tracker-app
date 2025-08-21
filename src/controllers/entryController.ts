@@ -1,3 +1,9 @@
+/**
+ * Entry controller
+ *
+ * CRUD endpoints for expense entries with budget checks and notification side effects.
+ * Transforms DB documents to a frontend-friendly shape.
+ */
 import express from 'express';
 import mongoose from 'mongoose';
 import Entry, { IEntry } from '../models/Entry';
@@ -14,14 +20,75 @@ interface AuthRequest extends Request {
   };
 }
 
-// Get all entries for a user
+// Get paginated entries for a user with search and filtering
 export const getUserEntries = expressAsyncHandler(async (req: AuthRequest, res: Response) => {
   if (!req.user) {
     res.status(401).json({ message: 'Not authorized' });
     return;
   }
 
-  const entries = await Entry.find({ userId: req.user.id }).sort({ createdAt: -1 });
+  // Extract pagination and filter parameters
+  const page = parseInt(req.query.page as string) || 1;
+  const limit = parseInt(req.query.limit as string) || 8;
+  const search = req.query.search as string || '';
+  const dateFilter = req.query.dateFilter as string || '';
+  const sortBy = req.query.sortBy as string || 'all';
+
+  // Calculate skip value for pagination
+  const skip = (page - 1) * limit;
+
+  // Build query object
+  const query: any = { userId: req.user.id };
+
+  // Add search filter
+  if (search) {
+    query.title = { $regex: search, $options: 'i' };
+  }
+
+  // Add date filter
+  if (dateFilter) {
+    const filterDate = new Date(dateFilter);
+    const nextDay = new Date(filterDate);
+    nextDay.setDate(nextDay.getDate() + 1);
+    
+    query.date = {
+      $gte: filterDate.toISOString().split('T')[0],
+      $lt: nextDay.toISOString().split('T')[0]
+    };
+  }
+
+  // Build sort object
+  let sort: any = {};
+  switch (sortBy) {
+    case 'price-high-low':
+      sort = { price: -1 };
+      break;
+    case 'price-low-high':
+      sort = { price: 1 };
+      break;
+    case 'date-new-old':
+      sort = { date: -1 };
+      break;
+    case 'date-old-new':
+      sort = { date: 1 };
+      break;
+    case 'all':
+      // No sorting applied - use natural order
+      sort = {};
+      break;
+    default:
+      // Default to no sorting for unknown values
+      sort = {};
+  }
+
+  // Get total count for pagination
+  const totalEntries = await Entry.countDocuments(query);
+
+  // Get paginated entries
+  const entries = await Entry.find(query)
+    .sort(sort)
+    .skip(skip)
+    .limit(limit);
   
   // Transform entries to match frontend expectations
   const transformedEntries = entries.map(entry => ({
@@ -31,11 +98,30 @@ export const getUserEntries = expressAsyncHandler(async (req: AuthRequest, res: 
     date: entry.date,
     user: entry.user
   }));
-  
-  res.json(transformedEntries);
+
+  // Calculate pagination info
+  const totalPages = Math.ceil(totalEntries / limit);
+  const hasNextPage = page < totalPages;
+  const hasPrevPage = page > 1;
+
+  res.json({
+    entries: transformedEntries,
+    pagination: {
+      currentPage: page,
+      totalPages,
+      totalEntries,
+      hasNextPage,
+      hasPrevPage,
+      limit
+    }
+  });
 });
 
 // Add new entry
+/**
+ * Creates a new entry for the authenticated user. Rejects when the new total
+ * would exceed the user's budget. Also creates a notification.
+ */
 export const addEntry = expressAsyncHandler(async (req: AuthRequest, res: Response) => {
   if (!req.user) {
     res.status(401).json({ message: 'Not authorized' });
@@ -109,6 +195,10 @@ export const addEntry = expressAsyncHandler(async (req: AuthRequest, res: Respon
 });
 
 // Update entry
+/**
+ * Updates an existing entry owned by the user. Validates ID, preserves ownership,
+ * enforces budget limit, and emits an 'edit' notification.
+ */
 export const updateEntry = expressAsyncHandler(async (req: AuthRequest, res: Response) => {
   if (!req.user) {
     res.status(401).json({ message: 'Not authorized' });
@@ -193,6 +283,9 @@ export const updateEntry = expressAsyncHandler(async (req: AuthRequest, res: Res
 });
 
 // Delete entry
+/**
+ * Deletes an entry owned by the user and emits a 'delete' notification.
+ */
 export const deleteEntry = expressAsyncHandler(async (req: AuthRequest, res: Response) => {
   if (!req.user) {
     res.status(401).json({ message: 'Not authorized' });
@@ -231,6 +324,10 @@ export const deleteEntry = expressAsyncHandler(async (req: AuthRequest, res: Res
 });
 
 // Get budget analysis data for charts
+/**
+ * Computes aggregated spend vs. monthly budget and, for last-month, daily breakdowns.
+ * Returns a compact structure that the frontend charts can directly consume.
+ */
 export const getBudgetAnalysis = expressAsyncHandler(async (req: AuthRequest, res: Response) => {
   if (!req.user) {
     res.status(401).json({ message: 'Not authorized' });
@@ -362,23 +459,25 @@ export const getBudgetAnalysis = expressAsyncHandler(async (req: AuthRequest, re
       dailyExpenses.set(dateKey, (dailyExpenses.get(dateKey) || 0) + entry.price);
     });
 
-    const dailyBudget = user.budgetLimit / daysInMonth;
+    // For daily view, we still use the full monthly budget limit, not divided by days
+    const monthlyBudget = user.budgetLimit;
     const d: Array<{ year: number; month: number; day: number; date: string; totalExpenses: number; budgetLimit: number; exceeded: boolean; remaining: number }> = [];
 
     for (let day = 1; day <= daysInMonth; day++) {
       const dateObj = new Date(startDate.getFullYear(), startDate.getMonth(), day);
       const key = dateObj.toISOString().split('T')[0];
       const totalExpenses = dailyExpenses.get(key) || 0;
-      const exceeded = totalExpenses > dailyBudget;
+      // Compare daily expenses against the full monthly budget limit
+      const exceeded = totalExpenses > monthlyBudget;
       d.push({
         year: dateObj.getFullYear(),
         month: dateObj.getMonth() + 1,
         day,
         date: key,
         totalExpenses,
-        budgetLimit: dailyBudget,
+        budgetLimit: monthlyBudget,
         exceeded,
-        remaining: dailyBudget - totalExpenses,
+        remaining: monthlyBudget - totalExpenses,
       });
     }
 
