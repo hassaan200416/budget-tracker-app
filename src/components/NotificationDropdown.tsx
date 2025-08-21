@@ -1,3 +1,4 @@
+// Dropdown listing recent notifications with relative timestamps.
 import React from "react";
 import addIcon from "../assets/images/add.png";
 import editIcon from "../assets/images/edit.png";

@@ -1,8 +1,15 @@
+/**
+ * Authentication context
+ *
+ * Provides login/signup/logout, current user, token, and a helper to update
+ * user fields locally after profile changes. Persists token based on
+ * remember-me selection and refreshes profile on startup.
+ */
 import React, { createContext, useContext, useState, useEffect } from "react";
 import type { ReactNode } from "react";
 import { authAPI, userAPI } from "../services/api";
 
-// User data structure for authentication
+// User data structure for authentication and profile
 interface User {
   id: string;
   firstName: string;
@@ -10,6 +17,17 @@ interface User {
   email: string;
   budgetLimit: number;
   role: string;
+  profileImageUrl?: string;
+  jobTitle?: string;
+  phoneNumber?: string;
+  streetAddress?: string;
+  city?: string;
+  state?: string;
+  zipCode?: string;
+  completeAddress?: string;
+  dateOfBirth?: string;
+  education?: string;
+  gender?: string;
 }
 
 // All the functions and data that will be available throughout the app
@@ -81,13 +99,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             "Server restart detected, logging out user and clearing notifications"
           );
 
-          // Clear all stored authentication data
+          // Clear stored authentication token and flags
           localStorage.removeItem("token");
-          localStorage.removeItem("user");
           localStorage.removeItem("rememberMe");
           localStorage.removeItem("storedServerStartTime");
           sessionStorage.removeItem("token");
-          sessionStorage.removeItem("user");
 
           // Clear notification data
           localStorage.removeItem("notifications");
@@ -103,34 +119,45 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           return;
         }
 
-        // Try to get stored authentication data
+        // Try to get stored authentication token only
         let storedToken =
           localStorage.getItem("token") || sessionStorage.getItem("token");
-        let storedUser =
-          localStorage.getItem("user") || sessionStorage.getItem("user");
         const rememberMe = localStorage.getItem("rememberMe") === "true";
 
-        if (storedToken && storedUser) {
-          try {
-            const userData = JSON.parse(storedUser);
-            setUser(userData);
-            setToken(storedToken);
+        if (storedToken) {
+          setToken(storedToken);
 
-            if (!rememberMe && localStorage.getItem("token")) {
-              sessionStorage.setItem("token", storedToken);
-              sessionStorage.setItem("user", storedUser);
-              localStorage.removeItem("token");
-              localStorage.removeItem("user");
-            }
-          } catch (error) {
-            console.error("Failed to parse stored user data:", error);
+          // Ensure token is in the intended storage for this session
+          if (!rememberMe && localStorage.getItem("token")) {
+            sessionStorage.setItem("token", storedToken);
             localStorage.removeItem("token");
-            localStorage.removeItem("user");
-            localStorage.removeItem("rememberMe");
-            sessionStorage.removeItem("token");
-            sessionStorage.removeItem("user");
-            setToken(null);
-            setUser(null);
+          }
+
+          // Fetch fresh profile from the API to avoid stale local storage data
+          try {
+            const profile = await userAPI.getProfile();
+            const hydratedUser: User = {
+              id: profile._id,
+              firstName: profile.firstName,
+              lastName: profile.lastName,
+              email: profile.email,
+              budgetLimit: profile.budgetLimit,
+              role: profile.role,
+              profileImageUrl: profile.profileImageUrl,
+              jobTitle: profile.jobTitle,
+              phoneNumber: profile.phoneNumber,
+              streetAddress: profile.streetAddress,
+              city: profile.city,
+              state: profile.state,
+              zipCode: profile.zipCode,
+              completeAddress: profile.completeAddress,
+              dateOfBirth: profile.dateOfBirth,
+              education: profile.education,
+              gender: profile.gender,
+            };
+            setUser(hydratedUser);
+          } catch (error) {
+            console.error("Failed to fetch profile:", error);
           }
         } else {
           setUser(null);
@@ -139,10 +166,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       } catch (error) {
         console.error("Auth check error:", error);
         localStorage.removeItem("token");
-        localStorage.removeItem("user");
         localStorage.removeItem("rememberMe");
         sessionStorage.removeItem("token");
-        sessionStorage.removeItem("user");
         setToken(null);
         setUser(null);
       } finally {
@@ -177,23 +202,28 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       setToken(response.token);
 
-      if (response.user) {
-        const userData: User = {
-          id: response.user._id,
-          firstName: response.user.firstName,
-          lastName: response.user.lastName,
-          email: response.user.email,
-          budgetLimit: response.user.budgetLimit,
-          role: response.user.role,
-        };
-        setUser(userData);
-
-        if (rememberMe) {
-          localStorage.setItem("user", JSON.stringify(userData));
-        } else {
-          sessionStorage.setItem("user", JSON.stringify(userData));
-        }
-      }
+      // Fetch full profile after login to ensure we have the latest data
+      const profile = await userAPI.getProfile();
+      const userData: User = {
+        id: profile._id,
+        firstName: profile.firstName,
+        lastName: profile.lastName,
+        email: profile.email,
+        budgetLimit: profile.budgetLimit,
+        role: profile.role,
+        profileImageUrl: profile.profileImageUrl,
+        jobTitle: profile.jobTitle,
+        phoneNumber: profile.phoneNumber,
+        streetAddress: profile.streetAddress,
+        city: profile.city,
+        state: profile.state,
+        zipCode: profile.zipCode,
+        completeAddress: profile.completeAddress,
+        dateOfBirth: profile.dateOfBirth,
+        education: profile.education,
+        gender: profile.gender,
+      };
+      setUser(userData);
 
       const serverStartTime = Date.now().toString();
       localStorage.setItem("serverStartTime", serverStartTime);
@@ -219,12 +249,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const logout = () => {
     localStorage.removeItem("token");
-    localStorage.removeItem("user");
     localStorage.removeItem("rememberMe");
     localStorage.removeItem("serverStartTime");
     localStorage.removeItem("storedServerStartTime");
     sessionStorage.removeItem("token");
-    sessionStorage.removeItem("user");
 
     setToken(null);
     setUser(null);
@@ -237,12 +265,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     if (user) {
       const updatedUser = { ...user, ...userData };
       setUser(updatedUser);
-
-      if (localStorage.getItem("rememberMe") === "true") {
-        localStorage.setItem("user", JSON.stringify(updatedUser));
-      } else {
-        sessionStorage.setItem("user", JSON.stringify(updatedUser));
-      }
     }
   };
 

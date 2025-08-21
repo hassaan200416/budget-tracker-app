@@ -1,3 +1,4 @@
+// Confirm logout dialog: prompts before clearing auth and navigating away.
 import React from "react";
 import {
   AlertDialog,

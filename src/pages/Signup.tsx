@@ -1,3 +1,5 @@
+// User signup page: collects basic account details and budget limit.
+// Delegates account creation to auth context; redirects to login on success.
 import React, { useState } from "react";
 import { useForm, type SubmitHandler } from "react-hook-form";
 import { useNavigate, Link } from "react-router-dom";

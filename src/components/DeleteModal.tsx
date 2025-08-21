@@ -1,4 +1,5 @@
 // src/components/DeleteModal.tsx
+// Confirmation dialog for deleting an expense.
 import React from "react";
 import {
   AlertDialog,

@@ -1,3 +1,4 @@
+// Recharts-based line chart rendering monthly/daily expenses vs a budget line.
 import React from "react";
 import {
   LineChart,

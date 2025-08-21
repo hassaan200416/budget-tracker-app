@@ -1,3 +1,4 @@
+// Compound filter bar for the expense list: sort, date, and search inputs.
 import React, { useState } from "react";
 import { CalendarIcon, ChevronDownIcon, SearchIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";

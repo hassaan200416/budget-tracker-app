@@ -1,4 +1,6 @@
 // src/pages/Dashboard.tsx
+// Main app screen: lists expenses with pagination, filtering, and CRUD.
+// Fetches notifications for the header and shows toasts for user feedback.
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -49,11 +51,14 @@ const Dashboard: React.FC = () => {
 
   const [notifications, setNotifications] = useState<Notification[]>([]);
 
-  // Filtering and Pagination State
+  // Pagination and Filtering State
   const [sortBy, setSortBy] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
   const [dateFilter, setDateFilter] = useState<Date | undefined>(undefined);
   const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
+  const [loading, setLoading] = useState(false);
   const itemsPerPage = 8; // Number of expenses shown per page
 
   // Toast notification state for user feedback
@@ -85,9 +90,20 @@ const Dashboard: React.FC = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Get all expenses for the current user
-        const expenses = await entriesAPI.getAll();
-        setExpenses(expenses);
+        setLoading(true);
+
+        // Get paginated expenses for the current user
+        const response = await entriesAPI.getAll({
+          page: currentPage,
+          limit: itemsPerPage,
+          search: searchTerm,
+          dateFilter: dateFilter?.toISOString().split("T")[0],
+          sortBy: sortBy,
+        });
+
+        setExpenses(response.entries);
+        setTotalPages(response.pagination.totalPages);
+        setTotalItems(response.pagination.totalEntries);
 
         // Get all notifications for the current user
         const notifications = await notificationsAPI.getAll();
@@ -96,12 +112,16 @@ const Dashboard: React.FC = () => {
         console.error("Failed to fetch data:", error);
         // Clear data on error to prevent showing stale information
         setExpenses([]);
+        setTotalPages(1);
+        setTotalItems(0);
         setNotifications([]);
+      } finally {
+        setLoading(false);
       }
     };
 
     fetchData();
-  }, [user.budgetLimit]); // Re-fetch when budget limit changes
+  }, [currentPage, dateFilter, sortBy, user.budgetLimit]); // Re-fetch when filters change (searchTerm handled separately)
 
   // Handle server restart events - clear notifications when backend restarts
   useEffect(() => {
@@ -184,7 +204,18 @@ const Dashboard: React.FC = () => {
       const newExpense = await entriesAPI.create(data);
       console.log("New expense created:", newExpense);
 
-      setExpenses([newExpense, ...expenses]);
+      // Refresh current page data to show the new expense
+      const response = await entriesAPI.getAll({
+        page: currentPage,
+        limit: itemsPerPage,
+        search: searchTerm,
+        dateFilter: dateFilter?.toISOString().split("T")[0],
+        sortBy: sortBy,
+      });
+
+      setExpenses(response.entries);
+      setTotalPages(response.pagination.totalPages);
+      setTotalItems(response.pagination.totalEntries);
 
       showNotification(
         "success",
@@ -235,11 +266,18 @@ const Dashboard: React.FC = () => {
         );
         console.log("Expense updated:", updatedExpense);
 
-        setExpenses(
-          expenses.map((exp) =>
-            exp.id === selectedExpense.id ? updatedExpense : exp
-          )
-        );
+        // Refresh current page data to show the updated expense
+        const response = await entriesAPI.getAll({
+          page: currentPage,
+          limit: itemsPerPage,
+          search: searchTerm,
+          dateFilter: dateFilter?.toISOString().split("T")[0],
+          sortBy: sortBy,
+        });
+
+        setExpenses(response.entries);
+        setTotalPages(response.pagination.totalPages);
+        setTotalItems(response.pagination.totalEntries);
 
         showNotification(
           "success",
@@ -281,7 +319,18 @@ const Dashboard: React.FC = () => {
         await entriesAPI.delete(selectedExpense.id);
         console.log("Expense deleted successfully");
 
-        setExpenses(expenses.filter((exp) => exp.id !== selectedExpense.id));
+        // Refresh current page data to show the updated list
+        const response = await entriesAPI.getAll({
+          page: currentPage,
+          limit: itemsPerPage,
+          search: searchTerm,
+          dateFilter: dateFilter?.toISOString().split("T")[0],
+          sortBy: sortBy,
+        });
+
+        setExpenses(response.entries);
+        setTotalPages(response.pagination.totalPages);
+        setTotalItems(response.pagination.totalEntries);
 
         showNotification(
           "error",
@@ -305,6 +354,74 @@ const Dashboard: React.FC = () => {
         setDeleteModalOpen(false);
       }
     }
+  };
+
+  // Handle filter changes - reset to first page when filters change
+  const handleFilterChange = (type: "search" | "date" | "sort", value: any) => {
+    setCurrentPage(1); // Reset to first page when filters change
+
+    switch (type) {
+      case "search":
+        setSearchTerm(value);
+        break;
+      case "date":
+        setDateFilter(value);
+        break;
+      case "sort":
+        setSortBy(value);
+        break;
+    }
+  };
+
+  // Debounced search to avoid too many API calls
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      // Trigger search after delay
+      if (searchTerm !== "") {
+        setCurrentPage(1); // Reset to first page for new search
+      }
+    }, 500); // 500ms delay
+
+    return () => clearTimeout(timeoutId);
+  }, [searchTerm]);
+
+  // Separate effect for search term changes
+  useEffect(() => {
+    if (searchTerm !== "") {
+      const fetchSearchResults = async () => {
+        try {
+          setLoading(true);
+
+          const response = await entriesAPI.getAll({
+            page: 1, // Always start from first page for search
+            limit: itemsPerPage,
+            search: searchTerm,
+            dateFilter: dateFilter?.toISOString().split("T")[0],
+            sortBy: sortBy,
+          });
+
+          setExpenses(response.entries);
+          setTotalPages(response.pagination.totalPages);
+          setTotalItems(response.pagination.totalEntries);
+        } catch (error) {
+          console.error("Failed to fetch search results:", error);
+          setExpenses([]);
+          setTotalPages(1);
+          setTotalItems(0);
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      fetchSearchResults();
+    }
+  }, [searchTerm, dateFilter, sortBy, itemsPerPage]);
+
+  // Handle page changes
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    // Scroll to top when changing pages
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const { logout } = useAuth();
@@ -333,34 +450,7 @@ const Dashboard: React.FC = () => {
     }
   };
 
-  // Filtering and sorting logic
-  const filteredExpenses = expenses
-    .filter((exp) => exp.title.toLowerCase().includes(searchTerm.toLowerCase()))
-    .filter((exp) => {
-      if (!dateFilter) return true;
-      const expenseDate = new Date(exp.date);
-      return expenseDate.toDateString() === dateFilter.toDateString();
-    })
-    .sort((a, b) => {
-      if (sortBy === "all") return 0;
-      if (sortBy === "price-high-low") return b.price - a.price;
-      if (sortBy === "price-low-high") return a.price - b.price;
-      if (sortBy === "date-new-old")
-        return new Date(b.date).getTime() - new Date(a.date).getTime();
-      if (sortBy === "date-old-new")
-        return new Date(a.date).getTime() - new Date(b.date).getTime();
-      return 0;
-    });
-
-  const paginatedExpenses = filteredExpenses.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
-  const totalPages = Math.max(
-    1,
-    Math.ceil(filteredExpenses.length / itemsPerPage)
-  );
-  const totalItems = filteredExpenses.length;
+  // No more client-side filtering - everything is handled by the backend
 
   return (
     <div className="flex h-screen bg-white font-poppins">
@@ -371,6 +461,7 @@ const Dashboard: React.FC = () => {
             firstName: user.firstName,
             lastName: user.lastName,
             email: user.email,
+            profileImageUrl: user.profileImageUrl,
           }}
           onLogout={handleLogout}
           notifications={notifications}
@@ -407,18 +498,26 @@ const Dashboard: React.FC = () => {
               <h2 className="text-lg font-bold text-black">Expenses</h2>
               <FilterBar
                 sortBy={sortBy}
-                onSortChange={setSortBy}
+                onSortChange={(value) => handleFilterChange("sort", value)}
                 dateFilter={dateFilter}
-                onDateChange={setDateFilter}
+                onDateChange={(value) => handleFilterChange("date", value)}
                 searchTerm={searchTerm}
-                onSearchChange={setSearchTerm}
+                onSearchChange={(value) => handleFilterChange("search", value)}
               />
             </div>
-            {paginatedExpenses.length === 0 ? (
-              <p className="text-center text-gray-500 py-8">No Result</p>
+            {loading ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
+              </div>
+            ) : expenses.length === 0 ? (
+              <p className="text-center text-gray-500 py-8">
+                {searchTerm
+                  ? `No expenses found for "${searchTerm}"`
+                  : "No expenses found"}
+              </p>
             ) : (
               <ExpenseTable
-                expenses={paginatedExpenses}
+                expenses={expenses}
                 budgetLimit={user.budgetLimit}
                 onEdit={(exp) => {
                   setSelectedExpense(exp);
@@ -432,13 +531,13 @@ const Dashboard: React.FC = () => {
             )}
             <div className="flex justify-between items-center px-4 py-3 border-t border-gray-200">
               <p className="text-sm text-gray-500">
-                Showing {paginatedExpenses.length} / {totalItems}
+                Showing {expenses.length} / {totalItems}
               </p>
               <div className="flex items-center space-x-1">
                 {/* Previous Page Button */}
                 <Button
                   size="sm"
-                  onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                  onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
                   disabled={currentPage === 1}
                   className="bg-white hover:bg-gray-100 text-gray-700 border border-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
@@ -450,7 +549,7 @@ const Dashboard: React.FC = () => {
                   <Button
                     key={i}
                     size="sm"
-                    onClick={() => setCurrentPage(i + 1)}
+                    onClick={() => handlePageChange(i + 1)}
                     className={
                       currentPage === i + 1
                         ? "bg-purple-600 hover:bg-purple-700 text-white"
@@ -465,7 +564,7 @@ const Dashboard: React.FC = () => {
                 <Button
                   size="sm"
                   onClick={() =>
-                    setCurrentPage(Math.min(totalPages, currentPage + 1))
+                    handlePageChange(Math.min(totalPages, currentPage + 1))
                   }
                   disabled={currentPage === totalPages}
                   className="bg-white hover:bg-gray-100 text-gray-700 border border-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"

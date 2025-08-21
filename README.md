@@ -46,7 +46,7 @@ src/
 
 - **User Registration**: Complete signup with budget limit
 - **User Login**: Secure authentication with JWT tokens
-- **Password Reset**: Email-based password recovery
+- **Password Reset**: Mocked reset page flow (no email send in demo)
 - **Session Management**: Persistent login with remember me
 - **Route Protection**: Protected routes with authentication guards
 - **Auto-logout**: Server restart detection and cleanup
@@ -137,7 +137,7 @@ src/
 
 - **Dashboard** (`/dashboard`): Main expense management interface
 - **Analysis** (`/analysis`): Expenses line chart with filters and budget limit
-- **Profile** (`/profile`): User profile management (placeholder)
+- **Profile** (`/profile`): Read-only profile and editable account tab with avatar upload/removal
 
 ## State Management
 
@@ -216,6 +216,11 @@ interface AuthContextType {
    npm run dev
    ```
 
+The frontend expects the backend at `http://localhost:5000/api`. If using a different port or host, either:
+
+- Update the hardcoded base in `src/services/api.ts`, or
+- Add `VITE_API_BASE_URL` in a `.env` and adapt `api.ts` to read it (optional enhancement).
+
 4. **Build for production**
    ```bash
    npm run build
@@ -232,7 +237,7 @@ interface AuthContextType {
 
 ### Environment Variables
 
-Create a `.env` file in the root directory:
+Create a `.env` file in the root directory (optional):
 
 ```env
 VITE_API_BASE_URL=http://localhost:5000/api
@@ -370,6 +375,7 @@ npm run test:coverage # Coverage report
 - **Build Errors**: Check TypeScript compilation
 - **Styling Issues**: Verify Tailwind CSS configuration
 - **API Errors**: Check backend connectivity
+- **CORS**: Ensure backend CORS origin matches the Vite dev server (e.g., `http://localhost:5173`)
 - **Performance**: Use React DevTools for profiling
 - **Cannot click after logout**: Fixed. Modals fully unmount before navigating; the Login page also cleans up any stray overlays.
 

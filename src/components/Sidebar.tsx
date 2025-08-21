@@ -1,4 +1,5 @@
 // src/components/Sidebar.tsx
+// Left navigation with compact/expanded modes and active route highlighting.
 import React from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";

@@ -1,3 +1,5 @@
+// Expense analysis page: shows monthly/daily spend vs budget with charts.
+// Reuses the header/notifications patterns from Dashboard.
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Sidebar from "../components/Sidebar";
@@ -208,6 +210,7 @@ const Analysis: React.FC = () => {
             firstName: user.firstName,
             lastName: user.lastName,
             email: user.email,
+            profileImageUrl: user.profileImageUrl,
           }}
           onLogout={handleLogout}
           notifications={notifications}

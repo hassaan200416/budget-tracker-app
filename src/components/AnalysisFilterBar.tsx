@@ -1,3 +1,4 @@
+// Compact control to select analysis range; hides the active option in the list.
 import React from "react";
 import { ChevronDownIcon } from "lucide-react";
 import {

@@ -1,4 +1,5 @@
 // src/components/AddEditModal.tsx
+// Modal for creating or updating an expense. Uses react-hook-form and shadcn UI.
 import React from "react";
 import { useForm, type SubmitHandler } from "react-hook-form";
 import {

@@ -1,4 +1,6 @@
 // src/pages/Login.tsx
+// Login form with remember-me that delegates auth to context.
+// Uses react-hook-form for minimal, typed validation.
 import React, { useState } from "react";
 import { useForm, type SubmitHandler } from "react-hook-form";
 import { Link } from "react-router-dom";

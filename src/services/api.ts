@@ -1,13 +1,16 @@
+// HTTP client utilities and typed API surface for the frontend.
+// Centralizes base URL, token injection, and error handling.
+// Keep endpoints thin: return JSON the UI already expects.
 // Base URL for the backend API
 const API_BASE_URL = 'http://localhost:5000/api';
 
-// Helper function to get authentication token from storage
+// Helper: retrieve JWT from either localStorage (remember me) or sessionStorage
 const getAuthToken = (): string | null => {
   return localStorage.getItem('token') || sessionStorage.getItem('token');
 };
 
-// Generic function to make authenticated API requests
-// Automatically adds the JWT token to the Authorization header
+// Generic helper that injects Authorization header and raises rich errors
+// so callers can display meaningful messages.
 const makeAuthRequest = async (url: string, options: RequestInit = {}) => {
   const token = getAuthToken();
 
@@ -75,9 +78,26 @@ export const authAPI = {
 
 // Expense management API endpoints (all require authentication)
 export const entriesAPI = {
-  // Get all expenses for the current user
-  getAll: async () => {
-    return makeAuthRequest('/entries');
+  // Get paginated expenses for the current user with search and filtering
+  getAll: async (params?: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    dateFilter?: string;
+    sortBy?: string;
+  }) => {
+    const queryParams = new URLSearchParams();
+    
+    if (params?.page) queryParams.append('page', params.page.toString());
+    if (params?.limit) queryParams.append('limit', params.limit.toString());
+    if (params?.search) queryParams.append('search', params.search);
+    if (params?.dateFilter) queryParams.append('dateFilter', params.dateFilter);
+    if (params?.sortBy) queryParams.append('sortBy', params.sortBy);
+    
+    const queryString = queryParams.toString();
+    const url = queryString ? `/entries?${queryString}` : '/entries';
+    
+    return makeAuthRequest(url);
   },
 
   // Get budget analysis data for charts
@@ -139,5 +159,27 @@ export const notificationsAPI = {
 export const userAPI = {
   getProfile: async () => {
     return makeAuthRequest('/profile');
+  },
+  updateProfile: async (payload: Partial<{
+    firstName: string;
+    lastName: string;
+    email: string;
+    budgetLimit: number;
+    jobTitle: string;
+    phoneNumber: string;
+    streetAddress: string;
+    city: string;
+    state: string;
+    zipCode: string;
+    completeAddress: string;
+    dateOfBirth: string;
+    education: string;
+    gender: string;
+    profileImageUrl: string | null;
+  }>) => {
+    return makeAuthRequest('/profile', {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    });
   },
 };

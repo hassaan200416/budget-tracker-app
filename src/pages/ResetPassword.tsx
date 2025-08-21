@@ -1,3 +1,5 @@
+// Reset password page (mock): accepts email and simulates a reset flow.
+// In a production app, this would call a backend endpoint to send an email.
 import React, { useState } from "react";
 import { useForm, type SubmitHandler } from "react-hook-form";
 import { useNavigate, Link } from "react-router-dom";

@@ -1,3 +1,4 @@
+// Floating, dismissible toast-like alert component with variants.
 import React from "react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { CheckCircle, XCircle, Info, AlertTriangle, X } from "lucide-react";

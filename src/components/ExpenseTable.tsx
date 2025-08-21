@@ -1,4 +1,5 @@
 // src/components/ExpenseTable.tsx
+// Data table for expenses with inline budget utilization indicator and actions.
 import React from "react";
 import editIcon from "../assets/images/hamburger-edit.png";
 import deleteIcon from "../assets/images/hamburger-delete.png";

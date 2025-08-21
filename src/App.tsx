@@ -1,3 +1,5 @@
+// Application routes and route guards.
+// Wraps routes with AuthProvider; uses simple guards for public/protected pages.
 import React from "react";
 import {
   BrowserRouter as Router,
