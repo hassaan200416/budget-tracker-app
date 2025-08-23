@@ -13,7 +13,10 @@ interface AnalysisFilterBarProps {
   onRangeChange: (value: string) => void;
 }
 
-const AnalysisFilterBar = ({ rangeFilter, onRangeChange }) => {
+const AnalysisFilterBar = ({
+  rangeFilter,
+  onRangeChange,
+}: AnalysisFilterBarProps) => {
   const rangeOptions = [
     { value: "last-12-months", label: "Last 12 Months" },
     { value: "last-6-months", label: "Last 6 Months" },

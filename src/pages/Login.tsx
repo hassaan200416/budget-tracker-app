@@ -28,7 +28,7 @@ const Login: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
 
   // Get authentication functions from context
-  const { login, logoutCounter } = useAuth();
+  const { login } = useAuth();
 
   // React Hook Form setup for form handling and validation
   const {
@@ -87,7 +87,7 @@ const Login: React.FC = () => {
       setIsLoading(false);
       cancelAnimationFrame(raf);
     };
-  }, [reset, logoutCounter]); // Reset when logoutCounter changes (after logout)
+  }, [reset]); // Reset when component mounts
 
   // Handle form submission - attempt to log in user
   const onSubmit: SubmitHandler<LoginForm> = async (data) => {
