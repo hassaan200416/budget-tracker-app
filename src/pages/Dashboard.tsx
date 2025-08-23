@@ -1,7 +1,7 @@
 // src/pages/Dashboard.tsx
 // Main app screen: lists expenses with pagination, filtering, and CRUD.
 // Fetches notifications for the header and shows toasts for user feedback.
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "../context/AuthContext";
@@ -86,42 +86,54 @@ const Dashboard: React.FC = () => {
     );
   }
 
-  // Load expenses and notifications when component mounts or budget changes
+  // Fetch expenses and notifications in parallel for better performance
   useEffect(() => {
-    const fetchData = async () => {
+    const loadData = async () => {
       try {
         setLoading(true);
 
-        // Get paginated expenses for the current user
-        const response = await entriesAPI.getAll({
-          page: currentPage,
-          limit: itemsPerPage,
-          search: searchTerm,
-          dateFilter: dateFilter?.toISOString().split("T")[0],
-          sortBy: sortBy,
-        });
+        // Fetch expenses and notifications in parallel using Promise.all
+        const [expensesResponse, notificationsData] = await Promise.all([
+          entriesAPI.getAll({
+            page: currentPage,
+            limit: itemsPerPage,
+            search: searchTerm,
+            dateFilter: dateFilter?.toISOString().split("T")[0],
+            sortBy: sortBy,
+          }),
+          notificationsAPI.getAll(),
+        ]);
 
-        setExpenses(response.entries);
-        setTotalPages(response.pagination.totalPages);
-        setTotalItems(response.pagination.totalEntries);
-
-        // Get all notifications for the current user
-        const notifications = await notificationsAPI.getAll();
-        setNotifications(notifications);
-      } catch (error) {
+        setExpenses(expensesResponse.entries);
+        setTotalPages(expensesResponse.pagination.totalPages);
+        setTotalItems(expensesResponse.pagination.totalEntries);
+        setNotifications(notificationsData);
+      } catch (error: any) {
         console.error("Failed to fetch data:", error);
-        // Clear data on error to prevent showing stale information
         setExpenses([]);
-        setTotalPages(1);
-        setTotalItems(0);
         setNotifications([]);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchData();
-  }, [currentPage, dateFilter, sortBy, user.budgetLimit]); // Re-fetch when filters change (searchTerm handled separately)
+    loadData();
+  }, [currentPage, itemsPerPage, searchTerm, dateFilter, sortBy]); // Removed user.budgetLimit from dependencies
+
+  // Debounced search to prevent excessive API calls
+  const debouncedSearch = useCallback(
+    (() => {
+      let timeoutId: NodeJS.Timeout;
+      return (searchValue: string) => {
+        clearTimeout(timeoutId);
+        timeoutId = setTimeout(() => {
+          setSearchTerm(searchValue);
+          setCurrentPage(1); // Reset to first page when searching
+        }, 300); // Wait 300ms after user stops typing
+      };
+    })(),
+    []
+  );
 
   // Handle server restart events - clear notifications when backend restarts
   useEffect(() => {
@@ -479,6 +491,15 @@ const Dashboard: React.FC = () => {
             transition: "margin-left 0.3s ease",
           }}
         >
+          {/* Loading overlay for initial load */}
+          {loading && expenses.length === 0 && (
+            <div className="absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center z-10">
+              <div className="flex flex-col items-center space-y-2">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
+                <p className="text-gray-600">Loading expenses...</p>
+              </div>
+            </div>
+          )}
           <div className="flex items-center justify-between mb-4">
             <h1 className="text-2xl font-semibold text-gray-800">Expenses</h1>
             <Button
@@ -502,14 +523,10 @@ const Dashboard: React.FC = () => {
                 dateFilter={dateFilter}
                 onDateChange={(value) => handleFilterChange("date", value)}
                 searchTerm={searchTerm}
-                onSearchChange={(value) => handleFilterChange("search", value)}
+                onSearchChange={debouncedSearch}
               />
             </div>
-            {loading ? (
-              <div className="flex items-center justify-center py-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
-              </div>
-            ) : expenses.length === 0 ? (
+            {expenses.length === 0 ? (
               <p className="text-center text-gray-500 py-8">
                 {searchTerm
                   ? `No expenses found for "${searchTerm}"`

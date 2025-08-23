@@ -1,5 +1,4 @@
 // Compact control to select analysis range; hides the active option in the list.
-import React from "react";
 import { ChevronDownIcon } from "lucide-react";
 import {
   Select,
@@ -14,10 +13,7 @@ interface AnalysisFilterBarProps {
   onRangeChange: (value: string) => void;
 }
 
-const AnalysisFilterBar: React.FC<AnalysisFilterBarProps> = ({
-  rangeFilter,
-  onRangeChange,
-}) => {
+const AnalysisFilterBar = ({ rangeFilter, onRangeChange }) => {
   const rangeOptions = [
     { value: "last-12-months", label: "Last 12 Months" },
     { value: "last-6-months", label: "Last 6 Months" },

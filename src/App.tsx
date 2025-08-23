@@ -1,6 +1,5 @@
 // Application routes and route guards.
 // Wraps routes with AuthProvider; uses simple guards for public/protected pages.
-import React from "react";
 import {
   BrowserRouter as Router,
   Routes,
@@ -49,7 +48,7 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({
 // PublicRoute: Wraps components that should only be visible to non-authenticated users
 // If user is already logged in, redirects to dashboard
 const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { token, user, isLoading, logoutCounter } = useAuth();
+  const { token, user, isLoading } = useAuth();
 
   // Show loading screen while checking authentication
   if (isLoading) {
@@ -77,8 +76,6 @@ const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
 // Main routing component that defines all application routes
 const AppRoutes: React.FC = () => {
-  const { logoutCounter } = useAuth();
-
   return (
     <Router>
       <Routes>
@@ -87,7 +84,7 @@ const AppRoutes: React.FC = () => {
           path="/login"
           element={
             <PublicRoute>
-              <Login key={logoutCounter} />
+              <Login />
             </PublicRoute>
           }
         />

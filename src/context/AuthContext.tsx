@@ -5,7 +5,7 @@
  * user fields locally after profile changes. Persists token based on
  * remember-me selection and refreshes profile on startup.
  */
-import React, { createContext, useContext, useState, useEffect } from "react";
+import { createContext, useContext, useState, useEffect } from "react";
 import type { ReactNode } from "react";
 import { authAPI, userAPI } from "../services/api";
 
@@ -35,7 +35,6 @@ interface AuthContextType {
   user: User | null;
   token: string | null;
   isLoading: boolean;
-  logoutCounter: number; // Forces re-render when logging out
 
   login: (
     email: string,
@@ -77,47 +76,44 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [logoutCounter, setLogoutCounter] = useState(0);
 
   // Check if user is already logged in when app starts
   useEffect(() => {
     const checkAuth = async () => {
       try {
         // Check if server has restarted (to handle backend changes)
-        const currentServerStartTime = localStorage.getItem("serverStartTime");
-        const storedServerStartTime = localStorage.getItem(
-          "storedServerStartTime"
-        );
+        // For now, let's disable the server restart detection as it's causing issues
+        // with page reloads. We can implement a more robust solution later if needed.
+        /*
+        const storedServerStartTime = localStorage.getItem("storedServerStartTime");
+        if (storedServerStartTime) {
+          // Check if server has actually restarted by making a lightweight API call
+          try {
+            // This would be a good place to add a server health check endpoint
+            // For now, we'll skip this check to prevent false positives
+          } catch (error) {
+            console.log("Server restart detected, logging out user");
+            // Clear stored authentication token and flags
+            localStorage.removeItem("token");
+            localStorage.removeItem("rememberMe");
+            localStorage.removeItem("storedServerStartTime");
+            sessionStorage.removeItem("token");
 
-        // If server restarted, clear all user data and force logout
-        if (
-          currentServerStartTime &&
-          storedServerStartTime &&
-          currentServerStartTime !== storedServerStartTime
-        ) {
-          console.log(
-            "Server restart detected, logging out user and clearing notifications"
-          );
+            // Clear notification data
+            localStorage.removeItem("notifications");
+            sessionStorage.removeItem("notifications");
 
-          // Clear stored authentication token and flags
-          localStorage.removeItem("token");
-          localStorage.removeItem("rememberMe");
-          localStorage.removeItem("storedServerStartTime");
-          sessionStorage.removeItem("token");
+            // Notify other components about server restart
+            window.dispatchEvent(new CustomEvent("serverRestart"));
 
-          // Clear notification data
-          localStorage.removeItem("notifications");
-          sessionStorage.removeItem("notifications");
-
-          // Notify other components about server restart
-          window.dispatchEvent(new CustomEvent("serverRestart"));
-
-          // Reset authentication state
-          setToken(null);
-          setUser(null);
-          setIsLoading(false);
-          return;
+            // Reset authentication state
+            setToken(null);
+            setUser(null);
+            setIsLoading(false);
+            return;
+          }
         }
+        */
 
         // Try to get stored authentication token only
         let storedToken =
@@ -177,7 +173,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     const timeoutId = setTimeout(() => {
       setIsLoading(false);
-    }, 3000);
+    }, 1000); // Reduced from 3000ms to 1000ms for faster loading
 
     checkAuth();
 
@@ -225,9 +221,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       };
       setUser(userData);
 
-      const serverStartTime = Date.now().toString();
-      localStorage.setItem("serverStartTime", serverStartTime);
-      localStorage.setItem("storedServerStartTime", serverStartTime);
+      // Disabled server restart detection for now
+      // const serverStartTime = Date.now().toString();
+      // localStorage.setItem("serverStartTime", serverStartTime);
+      // localStorage.setItem("storedServerStartTime", serverStartTime);
     } catch (error) {
       throw error;
     }
@@ -241,7 +238,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     budgetLimit: number;
   }) => {
     try {
-      const response = await authAPI.signup(userData);
+      await authAPI.signup(userData);
     } catch (error) {
       throw error;
     }
@@ -250,15 +247,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const logout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("rememberMe");
-    localStorage.removeItem("serverStartTime");
-    localStorage.removeItem("storedServerStartTime");
+    // Removed server restart detection cleanup
+    // localStorage.removeItem("serverStartTime");
+    // localStorage.removeItem("storedServerStartTime");
     sessionStorage.removeItem("token");
 
     setToken(null);
     setUser(null);
     setIsLoading(false);
-
-    setLogoutCounter((prev) => prev + 1);
   };
 
   const updateUser = (userData: Partial<User>) => {
@@ -272,7 +268,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     user,
     token,
     isLoading,
-    logoutCounter,
     login,
     signup,
     logout,

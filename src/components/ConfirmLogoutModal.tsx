@@ -2,7 +2,6 @@
 import React from "react";
 import {
   AlertDialog,
-  AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
@@ -10,6 +9,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+
 import { Button } from "@/components/ui/button";
 
 interface ConfirmLogoutModalProps {

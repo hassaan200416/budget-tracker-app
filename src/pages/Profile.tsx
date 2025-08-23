@@ -3,11 +3,53 @@
 // uses context to keep header/user state in sync after updates.
 import React, { useState, useEffect, useRef, useLayoutEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { useForm } from "react-hook-form";
 import Header from "../components/Header";
 import ConfirmLogoutModal from "../components/ConfirmLogoutModal";
 import { useAuth } from "../context/AuthContext";
 import { notificationsAPI, userAPI } from "../services/api";
 import { Button } from "@/components/ui/button";
+
+// Image compression utility function
+const compressImage = (
+  dataUrl: string,
+  maxWidth: number,
+  maxHeight: number
+): Promise<string> => {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d");
+
+      // Calculate new dimensions
+      let { width, height } = img;
+      if (width > height) {
+        if (width > maxWidth) {
+          height = (height * maxWidth) / width;
+          width = maxWidth;
+        }
+      } else {
+        if (height > maxHeight) {
+          width = (width * maxHeight) / height;
+          height = maxHeight;
+        }
+      }
+
+      canvas.width = width;
+      canvas.height = height;
+
+      if (ctx) {
+        ctx.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL("image/jpeg", 0.8)); // Compress to JPEG with 80% quality
+      } else {
+        resolve(dataUrl); // Fallback to original if canvas context fails
+      }
+    };
+    img.onerror = () => resolve(dataUrl); // Fallback to original if image loading fails
+    img.src = dataUrl;
+  });
+};
 
 // Minimal notification shape to satisfy Header props
 interface Notification {
@@ -19,9 +61,56 @@ interface Notification {
   isRead: boolean;
 }
 
+// Form data interface for React Hook Form
+interface ProfileFormData {
+  firstName: string;
+  lastName: string;
+  email: string;
+  budgetLimit: number;
+  jobTitle: string;
+  phoneNumber: string;
+  streetAddress: string;
+  city: string;
+  state: string;
+  zipCode: string;
+  completeAddress: string;
+  dateOfBirth: string;
+  education: string;
+  gender: string;
+}
+
 const Profile: React.FC = () => {
   const navigate = useNavigate();
   const { user, logout, updateUser } = useAuth();
+
+  // React Hook Form setup
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors, isSubmitting },
+    watch,
+  } = useForm<ProfileFormData>({
+    defaultValues: {
+      firstName: "",
+      lastName: "",
+      email: "",
+      budgetLimit: 0,
+      jobTitle: "",
+      phoneNumber: "",
+      streetAddress: "",
+      city: "",
+      state: "",
+      zipCode: "",
+      completeAddress: "",
+      dateOfBirth: "",
+      education: "",
+      gender: "",
+    },
+  });
+
+  // Watch form values for display purposes
+  const watchedValues = watch();
 
   // Active tab: profile (read-only) or account (editable)
   const [activeTab, setActiveTab] = useState<"profile" | "account">("profile");
@@ -31,6 +120,10 @@ const Profile: React.FC = () => {
   const separatorRef = useRef<HTMLDivElement | null>(null);
   const [sliderLeft, setSliderLeft] = useState(0);
   const [sliderWidth, setSliderWidth] = useState(0);
+
+  // Image upload states
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [imageError, setImageError] = useState<string | null>(null);
 
   // Calculate slider position/width from the selected label
   const updateSliderFromSelection = () => {
@@ -58,34 +151,21 @@ const Profile: React.FC = () => {
     return () => window.removeEventListener("resize", onResize);
   }, []);
 
-  // Form state for My account
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
-  const [email, setEmail] = useState("");
-  const [budget, setBudget] = useState<number>(0);
-  const [saving, setSaving] = useState(false);
-  // Optional fields
-  const [jobTitle, setJobTitle] = useState("");
-  const [phoneNumber, setPhoneNumber] = useState("");
-  const [streetAddress, setStreetAddress] = useState("");
-  const [city, setCity] = useState("");
-  const [stateVal, setStateVal] = useState("");
-  const [zipCode, setZipCode] = useState("");
-  const [completeAddress, setCompleteAddress] = useState("");
-  const [dateOfBirth, setDateOfBirth] = useState("");
-  const [education, setEducation] = useState("");
-  const [gender, setGender] = useState("");
-
   // Logout confirmation modal
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   // Notifications shown in Header
   const [notifications, setNotifications] = useState<Notification[]>([]);
 
+  // Success message state
+  const [showSuccessMessage, setShowSuccessMessage] = useState(false);
+
   // Derived display address for read-only section
   const displayAddress =
-    completeAddress ||
-    [streetAddress, city, stateVal].filter(Boolean).join(", ");
+    watchedValues.completeAddress ||
+    [watchedValues.streetAddress, watchedValues.city, watchedValues.state]
+      .filter(Boolean)
+      .join(", ");
 
   // Fetch notifications for header badge/dropdown
   useEffect(() => {
@@ -144,119 +224,80 @@ const Profile: React.FC = () => {
     );
   }
 
-  // Prefill form from user when mounted
-  useEffect(() => {
-    if (user) {
-      setFirstName(user.firstName);
-      setLastName(user.lastName);
-      setEmail(user.email);
-      setBudget(user.budgetLimit);
-      // hydrate optional fields
-      setJobTitle(user.jobTitle || "");
-      setPhoneNumber(user.phoneNumber || "");
-      setStreetAddress(user.streetAddress || "");
-      setCity(user.city || "");
-      setStateVal(user.state || "");
-      setZipCode(user.zipCode || "");
-      setCompleteAddress(user.completeAddress || "");
-      setDateOfBirth(user.dateOfBirth || "");
-      setEducation(user.education || "");
-      setGender(user.gender || "");
-    }
-  }, [user]);
-
-  // Ensure we fetch fresh profile data when visiting this page
+  // Ensure we fetch fresh profile data when visiting this page (only once)
   useEffect(() => {
     const loadProfile = async () => {
       try {
         const profile = await userAPI.getProfile();
-        // Update context user for global consistency
-        updateUser({
-          firstName: profile.firstName,
-          lastName: profile.lastName,
-          email: profile.email,
-          budgetLimit: profile.budgetLimit,
-          ...(profile.profileImageUrl
-            ? { profileImageUrl: profile.profileImageUrl }
-            : {}),
-          ...(profile.jobTitle ? { jobTitle: profile.jobTitle } : {}),
-          ...(profile.phoneNumber ? { phoneNumber: profile.phoneNumber } : {}),
-          ...(profile.streetAddress
-            ? { streetAddress: profile.streetAddress }
-            : {}),
-          ...(profile.city ? { city: profile.city } : {}),
-          ...(profile.state ? { state: profile.state } : {}),
-          ...(profile.zipCode ? { zipCode: profile.zipCode } : {}),
-          ...(profile.completeAddress
-            ? { completeAddress: profile.completeAddress }
-            : {}),
-          ...(profile.dateOfBirth ? { dateOfBirth: profile.dateOfBirth } : {}),
-          ...(profile.education ? { education: profile.education } : {}),
-          ...(profile.gender ? { gender: profile.gender } : {}),
-        });
 
         // Hydrate form fields with the freshest data
-        setFirstName(profile.firstName || "");
-        setLastName(profile.lastName || "");
-        setEmail(profile.email || "");
-        setBudget(profile.budgetLimit || 0);
-        setJobTitle(profile.jobTitle || "");
-        setPhoneNumber(profile.phoneNumber || "");
-        setStreetAddress(profile.streetAddress || "");
-        setCity(profile.city || "");
-        setStateVal(profile.state || "");
-        setZipCode(profile.zipCode || "");
-        setCompleteAddress(profile.completeAddress || "");
-        setDateOfBirth(profile.dateOfBirth || "");
-        setEducation(profile.education || "");
-        setGender(profile.gender || "");
+        reset({
+          firstName: profile.firstName || "",
+          lastName: profile.lastName || "",
+          email: profile.email || "",
+          budgetLimit: profile.budgetLimit || 0,
+          jobTitle: profile.jobTitle || "",
+          phoneNumber: profile.phoneNumber || "",
+          streetAddress: profile.streetAddress || "",
+          city: profile.city || "",
+          state: profile.state || "",
+          zipCode: profile.zipCode || "",
+          completeAddress: profile.completeAddress || "",
+          dateOfBirth: profile.dateOfBirth || "",
+          education: profile.education || "",
+          gender: profile.gender || "",
+        });
       } catch (e) {
         console.error("Failed to load profile", e);
       }
     };
 
     loadProfile();
-  }, []);
+  }, []); // Empty dependency array - only run once
 
-  const resetForm = () => {
+  // Reset form when user data changes (only when user actually changes)
+  useEffect(() => {
     if (user) {
-      setFirstName(user.firstName);
-      setLastName(user.lastName);
-      setEmail(user.email);
-      setBudget(user.budgetLimit);
-      setJobTitle(user.jobTitle || "");
-      setPhoneNumber(user.phoneNumber || "");
-      setStreetAddress(user.streetAddress || "");
-      setCity(user.city || "");
-      setStateVal(user.state || "");
-      setZipCode(user.zipCode || "");
-      setCompleteAddress(user.completeAddress || "");
-      setDateOfBirth(user.dateOfBirth || "");
-      setEducation(user.education || "");
-      setGender(user.gender || "");
+      reset({
+        firstName: user.firstName || "",
+        lastName: user.lastName || "",
+        email: user.email || "",
+        budgetLimit: user.budgetLimit || 0,
+        jobTitle: user.jobTitle || "",
+        phoneNumber: user.phoneNumber || "",
+        streetAddress: user.streetAddress || "",
+        city: user.city || "",
+        state: user.state || "",
+        zipCode: user.zipCode || "",
+        completeAddress: user.completeAddress || "",
+        dateOfBirth: user.dateOfBirth || "",
+        education: user.education || "",
+        gender: user.gender || "",
+      });
     }
-  };
+  }, [user?.id, reset]); // Only depend on user ID and reset function
 
-  const handleSave = async () => {
+  const onSubmit = async (data: ProfileFormData) => {
     try {
-      setSaving(true);
       const payload = {
-        firstName: firstName.trim(),
-        lastName: lastName.trim(),
-        email: email.trim(),
-        budgetLimit: Number(budget) || 0,
-        jobTitle: jobTitle.trim() || undefined,
-        phoneNumber: phoneNumber.trim() || undefined,
-        streetAddress: streetAddress.trim() || undefined,
-        city: city.trim() || undefined,
-        state: stateVal.trim() || undefined,
-        zipCode: zipCode.trim() || undefined,
-        completeAddress: completeAddress.trim() || undefined,
-        dateOfBirth: dateOfBirth.trim() || undefined,
-        education: education.trim() || undefined,
-        gender: gender.trim() || undefined,
+        firstName: data.firstName.trim(),
+        lastName: data.lastName.trim(),
+        email: data.email.trim(),
+        budgetLimit: Number(data.budgetLimit) || 0,
+        jobTitle: data.jobTitle.trim() || undefined,
+        phoneNumber: data.phoneNumber.trim() || undefined,
+        streetAddress: data.streetAddress.trim() || undefined,
+        city: data.city.trim() || undefined,
+        state: data.state.trim() || undefined,
+        zipCode: data.zipCode.trim() || undefined,
+        completeAddress: data.completeAddress.trim() || undefined,
+        dateOfBirth: data.dateOfBirth.trim() || undefined,
+        education: data.education.trim() || undefined,
+        gender: data.gender.trim() || undefined,
       };
+
       const updated = await userAPI.updateProfile(payload);
+
       updateUser({
         firstName: updated.firstName,
         lastName: updated.lastName,
@@ -278,11 +319,30 @@ const Profile: React.FC = () => {
         ...(updated.education ? { education: updated.education } : {}),
         ...(updated.gender ? { gender: updated.gender } : {}),
       });
+
+      // Show success message
+      setShowSuccessMessage(true);
+      setTimeout(() => setShowSuccessMessage(false), 3000);
+
+      // Create success notification
+      try {
+        await notificationsAPI.create({
+          message: "Profile updated successfully!",
+          type: "edit",
+          userId: user.id,
+        });
+
+        // Refresh notifications to show the new one
+        const updatedNotifications = await notificationsAPI.getAll();
+        setNotifications(updatedNotifications);
+      } catch (error) {
+        console.error("Failed to create notification:", error);
+        // Don't let notification errors break the profile update
+      }
+
       setActiveTab("profile");
     } catch (e) {
       console.error("Failed to update profile", e);
-    } finally {
-      setSaving(false);
     }
   };
 
@@ -374,6 +434,28 @@ const Profile: React.FC = () => {
             />
           </div>
 
+          {/* Success message */}
+          {showSuccessMessage && (
+            <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg">
+              <div className="flex items-center">
+                <svg
+                  className="w-5 h-5 text-green-500 mr-2"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+                <p className="text-green-800 font-medium">
+                  Profile updated successfully!
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* Two-column layout: Left card (avatar & contact), Right content */}
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
             {/* Left card - fixed height */}
@@ -384,11 +466,24 @@ const Profile: React.FC = () => {
                     <img
                       src={user.profileImageUrl}
                       alt="Profile"
-                      className="h-20 w-20 rounded-full object-cover cursor-pointer"
+                      className={`h-20 w-20 rounded-full object-cover cursor-pointer ${
+                        isUploadingImage ? "opacity-50" : ""
+                      }`}
                     />
                   ) : (
-                    <div className="h-20 w-20 rounded-full bg-purple-600 text-white flex items-center justify-center text-2xl font-bold cursor-pointer hover:bg-purple-700 transition-colors">
+                    <div
+                      className={`h-20 w-20 rounded-full bg-purple-600 text-white flex items-center justify-center text-2xl font-bold cursor-pointer hover:bg-purple-700 transition-colors ${
+                        isUploadingImage ? "opacity-50" : ""
+                      }`}
+                    >
                       {user.firstName.charAt(0).toUpperCase()}
+                    </div>
+                  )}
+
+                  {/* Loading overlay */}
+                  {isUploadingImage && (
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-purple-600"></div>
                     </div>
                   )}
                   {activeTab === "account" && (
@@ -399,41 +494,85 @@ const Profile: React.FC = () => {
                           const input = document.createElement("input");
                           input.type = "file";
                           input.accept = "image/*";
-                          input.onchange = (e) => {
+                          input.onchange = async (e) => {
                             const file = (e.target as HTMLInputElement)
                               .files?.[0];
                             if (file) {
-                              const reader = new FileReader();
-                              reader.onload = async () => {
-                                const dataUrl = reader.result as string;
-                                try {
+                              // Validate file size (max 5MB)
+                              const maxSize = 5 * 1024 * 1024; // 5MB
+                              if (file.size > maxSize) {
+                                setImageError(
+                                  "Image size must be less than 5MB"
+                                );
+                                setTimeout(() => setImageError(null), 3000);
+                                return;
+                              }
+
+                              // Validate file type
+                              if (!file.type.startsWith("image/")) {
+                                setImageError(
+                                  "Please select a valid image file"
+                                );
+                                setTimeout(() => setImageError(null), 3000);
+                                return;
+                              }
+
+                              setIsUploadingImage(true);
+                              setImageError(null);
+
+                              try {
+                                const reader = new FileReader();
+                                reader.onload = async () => {
+                                  const dataUrl = reader.result as string;
+
+                                  // Compress image if it's too large
+                                  const compressedDataUrl = await compressImage(
+                                    dataUrl,
+                                    800,
+                                    800
+                                  );
+
                                   const updated = await userAPI.updateProfile({
-                                    profileImageUrl: dataUrl,
+                                    profileImageUrl: compressedDataUrl,
                                   });
                                   updateUser({
                                     profileImageUrl: updated.profileImageUrl,
                                   });
-                                } catch (err) {
-                                  console.error(
-                                    "Failed to update profile image",
-                                    err
-                                  );
-                                }
-                              };
-                              reader.readAsDataURL(file);
+                                  setIsUploadingImage(false);
+                                };
+                                reader.onerror = () => {
+                                  setImageError("Failed to read image file");
+                                  setIsUploadingImage(false);
+                                  setTimeout(() => setImageError(null), 3000);
+                                };
+                                reader.readAsDataURL(file);
+                              } catch (err) {
+                                console.error(
+                                  "Failed to update profile image",
+                                  err
+                                );
+                                setImageError("Failed to upload image");
+                                setIsUploadingImage(false);
+                                setTimeout(() => setImageError(null), 3000);
+                              }
                             }
                           };
                           input.click();
                         }}
                       >
                         <div className="bg-white bg-opacity-90 rounded-full px-2 py-1 text-xs text-gray-700 font-medium hover:bg-opacity-100 transition-all">
-                          Edit | Update
+                          {isUploadingImage ? "Uploading..." : "Edit | Update"}
                         </div>
                       </div>
                       {user.profileImageUrl && (
                         <div
                           className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 hidden group-hover:flex cursor-pointer"
                           onClick={async () => {
+                            if (isUploadingImage) return; // Prevent multiple clicks
+
+                            setIsUploadingImage(true);
+                            setImageError(null);
+
                             try {
                               await userAPI.updateProfile({
                                 profileImageUrl: null,
@@ -446,11 +585,15 @@ const Profile: React.FC = () => {
                                 "Failed to delete profile image",
                                 err
                               );
+                              setImageError("Failed to delete image");
+                              setTimeout(() => setImageError(null), 3000);
+                            } finally {
+                              setIsUploadingImage(false);
                             }
                           }}
                         >
                           <div className="!bg-red-500 hover:!bg-red-600 !text-white rounded-full px-2 py-1 text-xs font-medium transition-colors border border-red-600">
-                            Delete
+                            {isUploadingImage ? "Deleting..." : "Delete"}
                           </div>
                         </div>
                       )}
@@ -460,7 +603,17 @@ const Profile: React.FC = () => {
                 <h3 className="mt-3 font-semibold text-gray-800 text-lg">
                   {user.firstName} {user.lastName}
                 </h3>
-                <p className="text-sm text-gray-500">{jobTitle || "—"}</p>
+
+                {/* Image upload error display */}
+                {imageError && (
+                  <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded-md">
+                    <p className="text-red-600 text-xs">{imageError}</p>
+                  </div>
+                )}
+
+                <p className="text-sm text-gray-500">
+                  {watchedValues.jobTitle || "—"}
+                </p>
 
                 {/* Divider */}
                 <div className="w-full border-t border-gray-200 my-4"></div>
@@ -481,7 +634,7 @@ const Profile: React.FC = () => {
                       />
                     </svg>
                     <span className="text-gray-800">
-                      {phoneNumber || "Not provided"}
+                      {watchedValues.phoneNumber || "Not provided"}
                     </span>
                   </div>
                   <div className="flex items-center space-x-3">
@@ -521,7 +674,9 @@ const Profile: React.FC = () => {
                       />
                     </svg>
                     <span className="text-gray-800">
-                      {[city, stateVal].filter(Boolean).join(", ") || "—"}
+                      {[watchedValues.city, watchedValues.state]
+                        .filter(Boolean)
+                        .join(", ") || "—"}
                     </span>
                   </div>
                   <div className="flex items-center space-x-3">
@@ -539,7 +694,9 @@ const Profile: React.FC = () => {
                       />
                     </svg>
                     <span className="text-gray-800">
-                      {completeAddress || streetAddress || "—"}
+                      {watchedValues.completeAddress ||
+                        watchedValues.streetAddress ||
+                        "—"}
                     </span>
                   </div>
                 </div>
@@ -587,16 +744,20 @@ const Profile: React.FC = () => {
                       <div>
                         <div className="text-gray-400">Phone Number</div>
                         <div className="font-semibold">
-                          {phoneNumber || "—"}
+                          {watchedValues.phoneNumber || "—"}
                         </div>
                       </div>
                       <div>
                         <div className="text-gray-400">Gender</div>
-                        <div className="font-semibold">{gender || "—"}</div>
+                        <div className="font-semibold">
+                          {watchedValues.gender || "—"}
+                        </div>
                       </div>
                       <div>
                         <div className="text-gray-400">Zip Code</div>
-                        <div className="font-semibold">{zipCode || "—"}</div>
+                        <div className="font-semibold">
+                          {watchedValues.zipCode || "—"}
+                        </div>
                       </div>
                       <div>
                         <div className="text-gray-400">Email</div>
@@ -605,12 +766,14 @@ const Profile: React.FC = () => {
                       <div>
                         <div className="text-gray-400">Date of Birth</div>
                         <div className="font-semibold">
-                          {dateOfBirth || "—"}
+                          {watchedValues.dateOfBirth || "—"}
                         </div>
                       </div>
                       <div>
                         <div className="text-gray-400">Education</div>
-                        <div className="font-semibold">{education || "—"}</div>
+                        <div className="font-semibold">
+                          {watchedValues.education || "—"}
+                        </div>
                       </div>
                       <div>
                         <div className="text-gray-400">Budget Limit</div>
@@ -628,7 +791,10 @@ const Profile: React.FC = () => {
                   </div>
                 </>
               ) : (
-                <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+                <form
+                  onSubmit={handleSubmit(onSubmit)}
+                  className="bg-white rounded-lg shadow-sm border border-gray-200"
+                >
                   <div
                     className="px-4 py-3 border-b border-gray-200"
                     style={{ backgroundColor: "#f3f4f6" }}
@@ -647,28 +813,47 @@ const Profile: React.FC = () => {
                             First Name
                           </label>
                           <input
-                            value={firstName}
-                            onChange={(e) => setFirstName(e.target.value)}
-                            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-gray-50 focus:bg-white focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                            {...register("firstName", {
+                              required: "First name is required",
+                            })}
+                            className={`w-full border rounded-lg px-3 py-2 text-sm bg-gray-50 focus:bg-white focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all ${
+                              errors.firstName
+                                ? "border-red-500 focus:ring-red-500"
+                                : "border-gray-200 focus:ring-purple-500"
+                            }`}
                           />
+                          {errors.firstName && (
+                            <p className="text-red-500 text-xs mt-1">
+                              {errors.firstName.message}
+                            </p>
+                          )}
                         </div>
                         <div>
                           <label className="block text-xs text-gray-500 mb-2">
                             Last Name
                           </label>
                           <input
-                            value={lastName}
-                            onChange={(e) => setLastName(e.target.value)}
-                            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-gray-50 focus:bg-white focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                            {...register("lastName", {
+                              required: "Last name is required",
+                            })}
+                            className={`w-full border rounded-lg px-3 py-2 text-sm bg-gray-50 focus:bg-white focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all ${
+                              errors.lastName
+                                ? "border-red-500 focus:ring-red-500"
+                                : "border-gray-200 focus:ring-purple-500"
+                            }`}
                           />
+                          {errors.lastName && (
+                            <p className="text-red-500 text-xs mt-1">
+                              {errors.lastName.message}
+                            </p>
+                          )}
                         </div>
                         <div>
                           <label className="block text-xs text-gray-500 mb-2">
                             Job Title
                           </label>
                           <input
-                            value={jobTitle}
-                            onChange={(e) => setJobTitle(e.target.value)}
+                            {...register("jobTitle")}
                             className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-gray-50 focus:bg-white focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
                           />
                         </div>
@@ -686,8 +871,7 @@ const Profile: React.FC = () => {
                             Street Address
                           </label>
                           <input
-                            value={streetAddress}
-                            onChange={(e) => setStreetAddress(e.target.value)}
+                            {...register("streetAddress")}
                             className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-gray-50 focus:bg-white focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
                           />
                         </div>
@@ -696,30 +880,60 @@ const Profile: React.FC = () => {
                             City
                           </label>
                           <input
-                            value={city}
-                            onChange={(e) => setCity(e.target.value)}
-                            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-gray-50 focus:bg-white focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                            {...register("city", {
+                              required: "City is required",
+                            })}
+                            className={`w-full border rounded-lg px-3 py-2 text-sm bg-gray-50 focus:bg-white focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all ${
+                              errors.city
+                                ? "border-red-500 focus:ring-red-500"
+                                : "border-gray-200 focus:ring-purple-500"
+                            }`}
                           />
+                          {errors.city && (
+                            <p className="text-red-500 text-xs mt-1">
+                              {errors.city.message}
+                            </p>
+                          )}
                         </div>
                         <div>
                           <label className="block text-xs text-gray-500 mb-2">
                             State
                           </label>
                           <input
-                            value={stateVal}
-                            onChange={(e) => setStateVal(e.target.value)}
-                            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-gray-50 focus:bg-white focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                            {...register("state", {
+                              required: "State is required",
+                            })}
+                            className={`w-full border rounded-lg px-3 py-2 text-sm bg-gray-50 focus:bg-white focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all ${
+                              errors.state
+                                ? "border-red-500 focus:ring-red-500"
+                                : "border-gray-200 focus:ring-purple-500"
+                            }`}
                           />
+                          {errors.state && (
+                            <p className="text-red-500 text-xs mt-1">
+                              {errors.state.message}
+                            </p>
+                          )}
                         </div>
                         <div>
                           <label className="block text-xs text-gray-500 mb-2">
                             Zip Code
                           </label>
                           <input
-                            value={zipCode}
-                            onChange={(e) => setZipCode(e.target.value)}
-                            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-gray-50 focus:bg-white focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                            {...register("zipCode", {
+                              required: "Zip code is required",
+                            })}
+                            className={`w-full border rounded-lg px-3 py-2 text-sm bg-gray-50 focus:bg-white focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all ${
+                              errors.zipCode
+                                ? "border-red-500 focus:ring-red-500"
+                                : "border-gray-200 focus:ring-purple-500"
+                            }`}
                           />
+                          {errors.zipCode && (
+                            <p className="text-red-500 text-xs mt-1">
+                              {errors.zipCode.message}
+                            </p>
+                          )}
                         </div>
                       </div>
                       <div>
@@ -727,8 +941,7 @@ const Profile: React.FC = () => {
                           Complete Address
                         </label>
                         <input
-                          value={completeAddress}
-                          onChange={(e) => setCompleteAddress(e.target.value)}
+                          {...register("completeAddress")}
                           className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-gray-50 focus:bg-white focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
                         />
                       </div>
@@ -745,8 +958,7 @@ const Profile: React.FC = () => {
                             Phone Number
                           </label>
                           <input
-                            value={phoneNumber}
-                            onChange={(e) => setPhoneNumber(e.target.value)}
+                            {...register("phoneNumber")}
                             className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-gray-50 focus:bg-white focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
                           />
                         </div>
@@ -756,10 +968,25 @@ const Profile: React.FC = () => {
                           </label>
                           <input
                             type="email"
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-gray-50 focus:bg-white focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                            {...register("email", {
+                              required: "Email is required",
+                              pattern: {
+                                value:
+                                  /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
+                                message: "Invalid email address",
+                              },
+                            })}
+                            className={`w-full border rounded-lg px-3 py-2 text-sm bg-gray-50 focus:bg-white focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all ${
+                              errors.email
+                                ? "border-red-500 focus:ring-red-500"
+                                : "border-gray-200 focus:ring-purple-500"
+                            }`}
                           />
+                          {errors.email && (
+                            <p className="text-red-500 text-xs mt-1">
+                              {errors.email.message}
+                            </p>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -776,8 +1003,7 @@ const Profile: React.FC = () => {
                           </label>
                           <input
                             type="date"
-                            value={dateOfBirth}
-                            onChange={(e) => setDateOfBirth(e.target.value)}
+                            {...register("dateOfBirth")}
                             className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-gray-50 focus:bg-white focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
                           />
                         </div>
@@ -786,8 +1012,7 @@ const Profile: React.FC = () => {
                             Education
                           </label>
                           <input
-                            value={education}
-                            onChange={(e) => setEducation(e.target.value)}
+                            {...register("education")}
                             className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-gray-50 focus:bg-white focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
                           />
                         </div>
@@ -796,8 +1021,7 @@ const Profile: React.FC = () => {
                             Gender
                           </label>
                           <input
-                            value={gender}
-                            onChange={(e) => setGender(e.target.value)}
+                            {...register("gender")}
                             className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-gray-50 focus:bg-white focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
                           />
                         </div>
@@ -815,31 +1039,84 @@ const Profile: React.FC = () => {
                         </label>
                         <input
                           type="number"
-                          value={budget}
-                          onChange={(e) => setBudget(Number(e.target.value))}
-                          className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-gray-50 focus:bg-white focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                          {...register("budgetLimit", {
+                            valueAsNumber: true,
+                            min: {
+                              value: 0,
+                              message: "Budget must be positive",
+                            },
+                          })}
+                          className={`w-full border rounded-lg px-3 py-2 text-sm bg-gray-50 focus:bg-white focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all ${
+                            errors.budgetLimit
+                              ? "border-red-500 focus:ring-red-500"
+                              : "border-gray-200 focus:ring-purple-500"
+                          }`}
                         />
+                        {errors.budgetLimit && (
+                          <p className="text-red-500 text-xs mt-1">
+                            {errors.budgetLimit.message}
+                          </p>
+                        )}
                       </div>
                     </div>
 
                     <div className="flex space-x-3 pt-4">
                       <Button
-                        onClick={handleSave}
-                        disabled={saving}
-                        className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded-lg"
+                        type="submit"
+                        disabled={isSubmitting}
+                        className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded-lg flex items-center"
                       >
-                        {saving ? "Saving..." : "Update"}
+                        {isSubmitting && (
+                          <svg
+                            className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
+                            xmlns="http://www.w3.org/2000/svg"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                          >
+                            <circle
+                              className="opacity-25"
+                              cx="12"
+                              cy="12"
+                              r="10"
+                              stroke="currentColor"
+                              strokeWidth="4"
+                            ></circle>
+                            <path
+                              className="opacity-75"
+                              fill="currentColor"
+                              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                            ></path>
+                          </svg>
+                        )}
+                        {isSubmitting ? "Saving..." : "Update"}
                       </Button>
                       <Button
                         variant="outline"
-                        onClick={resetForm}
+                        onClick={() =>
+                          reset({
+                            firstName: user.firstName || "",
+                            lastName: user.lastName || "",
+                            email: user.email || "",
+                            budgetLimit: user.budgetLimit || 0,
+                            jobTitle: user.jobTitle || "",
+                            phoneNumber: user.phoneNumber || "",
+                            streetAddress: user.streetAddress || "",
+                            city: user.city || "",
+                            state: user.state || "",
+                            zipCode: user.zipCode || "",
+                            completeAddress: user.completeAddress || "",
+                            dateOfBirth: user.dateOfBirth || "",
+                            education: user.education || "",
+                            gender: user.gender || "",
+                          })
+                        }
                         className="px-6 py-2 rounded-lg border-gray-300 text-gray-700 hover:bg-gray-50"
                       >
                         Cancel
                       </Button>
                     </div>
                   </div>
-                </div>
+                </form>
               )}
             </div>
           </div>

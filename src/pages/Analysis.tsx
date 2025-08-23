@@ -47,6 +47,16 @@ interface BudgetAnalysis {
       exceeded: boolean;
       remaining: number;
     }>;
+    days?: Array<{
+      year: number;
+      month: number;
+      day: number;
+      date: string;
+      totalExpenses: number;
+      budgetLimit: number;
+      exceeded: boolean;
+      remaining: number;
+    }>;
     totalExpenses: number;
     totalBudget: number;
     overallExceeded: boolean;
@@ -75,84 +85,111 @@ const Analysis: React.FC = () => {
   );
   const [loading, setLoading] = useState(true);
 
-  // Fetch budget analysis data
-  useEffect(() => {
-    const loadBudgetAnalysis = async () => {
-      try {
-        setLoading(true);
-        console.log("Fetching budget analysis for range:", rangeFilter);
-        const data = await entriesAPI.getBudgetAnalysis(rangeFilter);
-        console.log("Budget analysis response:", data);
-        setBudgetAnalysis(data);
+  // Cache for budget analysis data to prevent unnecessary re-fetching
+  const [analysisCache, setAnalysisCache] = useState<
+    Record<string, BudgetAnalysis>
+  >({});
 
-        // Transform data for chart
-        let transformedData: ChartData[] = [];
-        if (rangeFilter === "last-month" && data.analysis.days) {
-          transformedData = data.analysis.days.map(
-            (day: {
-              day: number;
-              date: string;
-              totalExpenses: number;
-              budgetLimit: number;
-              exceeded: boolean;
-            }) => ({
-              label: new Date(day.date).getDate().toString(),
-              value: day.totalExpenses,
-              budgetLimit: day.budgetLimit,
-              exceeded: day.exceeded,
-            })
-          );
-        } else {
-          transformedData = data.analysis.months.map(
-            (month: {
-              year: number;
-              month: number;
-              monthName: string;
-              totalExpenses: number;
-              budgetLimit: number;
-              exceeded: boolean;
-              remaining: number;
-            }) => ({
-              label: month.monthName,
-              value: month.totalExpenses,
-              budgetLimit: month.budgetLimit,
-              exceeded: month.exceeded,
-            })
-          );
+  // Fetch notifications and budget analysis in parallel for better performance
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        // Check cache first
+        if (analysisCache[rangeFilter]) {
+          const cachedData = analysisCache[rangeFilter];
+          setBudgetAnalysis(cachedData);
+
+          // Transform cached data for chart
+          const transformedData: ChartData[] = cachedData.analysis.days
+            ? cachedData.analysis.days.map(
+                (day: {
+                  date: string;
+                  totalExpenses: number;
+                  budgetLimit: number;
+                  exceeded: boolean;
+                }) => ({
+                  label: new Date(day.date).getDate().toString(),
+                  value: day.totalExpenses,
+                  budgetLimit: day.budgetLimit,
+                  exceeded: day.exceeded,
+                })
+              )
+            : cachedData.analysis.months.map(
+                (month: {
+                  monthName: string;
+                  totalExpenses: number;
+                  budgetLimit: number;
+                  exceeded: boolean;
+                }) => ({
+                  label: month.monthName,
+                  value: month.totalExpenses,
+                  budgetLimit: month.budgetLimit,
+                  exceeded: month.exceeded,
+                })
+              );
+
+          setChartData(transformedData);
+          setLoading(false);
+          return;
         }
 
-        console.log("Transformed chart data:", transformedData);
+        // Fetch notifications and budget analysis in parallel
+        const [notificationsData, budgetData] = await Promise.all([
+          notificationsAPI.getAll(),
+          entriesAPI.getBudgetAnalysis(rangeFilter),
+        ]);
+
+        setNotifications(notificationsData);
+        setBudgetAnalysis(budgetData);
+
+        // Cache the budget analysis data
+        setAnalysisCache((prev) => ({
+          ...prev,
+          [rangeFilter]: budgetData,
+        }));
+
+        // Transform data for chart (optimized transformation)
+        const transformedData: ChartData[] = budgetData.analysis.days
+          ? budgetData.analysis.days.map(
+              (day: {
+                date: string;
+                totalExpenses: number;
+                budgetLimit: number;
+                exceeded: boolean;
+              }) => ({
+                label: new Date(day.date).getDate().toString(),
+                value: day.totalExpenses,
+                budgetLimit: day.budgetLimit,
+                exceeded: day.exceeded,
+              })
+            )
+          : budgetData.analysis.months.map(
+              (month: {
+                monthName: string;
+                totalExpenses: number;
+                budgetLimit: number;
+                exceeded: boolean;
+              }) => ({
+                label: month.monthName,
+                value: month.totalExpenses,
+                budgetLimit: month.budgetLimit,
+                exceeded: month.exceeded,
+              })
+            );
+
         setChartData(transformedData);
+        setLoading(false);
       } catch (error: any) {
-        console.error("Failed to fetch budget analysis:", error);
-        console.error("Error details:", {
-          message: error.message,
-          status: error.status,
-          response: error.response,
-        });
+        console.error("Failed to fetch data:", error);
+        setNotifications([]);
         setChartData([]);
         setBudgetAnalysis(null);
-      } finally {
         setLoading(false);
       }
     };
 
-    loadBudgetAnalysis();
-  }, [rangeFilter]);
-
-  // Fetch notifications for header badge/dropdown
-  useEffect(() => {
-    const loadNotifications = async () => {
-      try {
-        const data = await notificationsAPI.getAll();
-        setNotifications(data);
-      } catch (error) {
-        console.error("Failed to fetch notifications:", error);
-        setNotifications([]);
-      }
-    };
-    loadNotifications();
-  }, []);
+    loadData();
+  }, [rangeFilter, analysisCache]);
 
   // Clear notifications if server restarts (keeps behavior consistent with Dashboard)
   useEffect(() => {
@@ -230,6 +267,15 @@ const Analysis: React.FC = () => {
             transition: "margin-left 0.3s ease",
           }}
         >
+          {/* Loading overlay for initial load */}
+          {loading && !budgetAnalysis && (
+            <div className="absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center z-10">
+              <div className="flex flex-col items-center space-y-2">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
+                <p className="text-gray-600">Loading analysis data...</p>
+              </div>
+            </div>
+          )}
           <div className="flex items-center justify-between mb-4">
             <h1 className="text-2xl font-semibold text-gray-800">Analysis</h1>
           </div>
@@ -248,13 +294,8 @@ const Analysis: React.FC = () => {
               />
             </div>
 
-            {loading ? (
-              <div className="p-6 flex items-center justify-center">
-                <div className="text-gray-500">Loading budget analysis...</div>
-              </div>
-            ) : budgetAnalysis ? (
+            {budgetAnalysis ? (
               <>
-                {/* Chart */}
                 {/* Chart */}
                 <div className="p-6">
                   {chartData.length > 0 ? (
@@ -262,10 +303,6 @@ const Analysis: React.FC = () => {
                   ) : (
                     <div className="text-center text-gray-500 py-8">
                       <p>No chart data available</p>
-                      <p className="text-sm mt-2">
-                        Debug info: {budgetAnalysis.analysis.months.length}{" "}
-                        months found
-                      </p>
                     </div>
                   )}
                 </div>

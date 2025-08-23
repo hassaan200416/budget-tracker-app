@@ -5,7 +5,7 @@
 const API_BASE_URL = 'http://localhost:5000/api';
 
 // Helper: retrieve JWT from either localStorage (remember me) or sessionStorage
-const getAuthToken = (): string | null => {
+const getAuthToken = () => {
   return localStorage.getItem('token') || sessionStorage.getItem('token');
 };
 
@@ -136,10 +136,15 @@ export const notificationsAPI = {
     return makeAuthRequest('/notifications');
   },
 
-  // Mark a specific notification as read
-  markAsRead: async (id: string) => {
-    return makeAuthRequest(`/notifications/${id}/read`, {
-      method: 'PUT',
+  // Create a new notification
+  create: async (notificationData: {
+    message: string;
+    type: 'add' | 'edit' | 'delete' | 'update';
+    userId: string;
+  }) => {
+    return makeAuthRequest('/notifications', {
+      method: 'POST',
+      body: JSON.stringify(notificationData),
     });
   },
 
@@ -148,11 +153,6 @@ export const notificationsAPI = {
     return makeAuthRequest('/notifications/mark-all-read', {
       method: 'PUT',
     });
-  },
-
-  // Get the count of unread notifications
-  getUnreadCount: async () => {
-    return makeAuthRequest('/notifications/unread-count');
   },
 };
 
