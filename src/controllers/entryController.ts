@@ -27,25 +27,23 @@ export const getUserEntries = expressAsyncHandler(async (req: AuthRequest, res: 
     return;
   }
 
-  // Extract pagination and filter parameters
-  const page = parseInt(req.query.page as string) || 1;
-  const limit = parseInt(req.query.limit as string) || 8;
-  const search = req.query.search as string || '';
-  const dateFilter = req.query.dateFilter as string || '';
-  const sortBy = req.query.sortBy as string || 'all';
-
-  // Calculate skip value for pagination
+  const page = Number(req.query.page) || 1;
+  const limit = Number(req.query.limit) || 10;
+  const search = String(req.query.search || '');
+  const dateFilter = String(req.query.dateFilter || '');
+  const sortBy = String(req.query.sortBy || 'all');
+  
   const skip = (page - 1) * limit;
-
+  
   // Build query object
   const query: any = { userId: req.user.id };
-
-  // Add search filter
+  
+  // Add search filter if provided
   if (search) {
     query.title = { $regex: search, $options: 'i' };
   }
-
-  // Add date filter
+  
+  // Add date filter if provided
   if (dateFilter) {
     const filterDate = new Date(dateFilter);
     const nextDay = new Date(filterDate);
@@ -81,14 +79,14 @@ export const getUserEntries = expressAsyncHandler(async (req: AuthRequest, res: 
       sort = {};
   }
 
-  // Get total count for pagination
-  const totalEntries = await Entry.countDocuments(query);
-
-  // Get paginated entries
-  const entries = await Entry.find(query)
-    .sort(sort)
-    .skip(skip)
-    .limit(limit);
+  // Get total count and entries in parallel for better performance
+  const [totalEntries, entries] = await Promise.all([
+    Entry.countDocuments(query),
+    Entry.find(query)
+      .sort(sort)
+      .skip(skip)
+      .limit(limit)
+  ]);
   
   // Transform entries to match frontend expectations
   const transformedEntries = entries.map(entry => ({
@@ -391,7 +389,8 @@ export const getBudgetAnalysis = expressAsyncHandler(async (req: AuthRequest, re
       $gte: startDateStr,
       $lte: endDateStr
     }
-  }).sort({ date: 1 });
+  })
+  .sort({ date: 1 });
 
   console.log('Found', allEntries.length, 'entries in date range');
 

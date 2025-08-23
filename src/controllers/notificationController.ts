@@ -1,8 +1,8 @@
 /**
  * Notification controller
  *
- * Lightweight endpoints to fetch, mark single/read-all, and count unread
- * notifications scoped to the authenticated user.
+ * Lightweight endpoints to fetch and mark all notifications as read
+ * scoped to the authenticated user.
  */
 import express from 'express';
 import Notification, { INotification } from '../models/Notification';
@@ -31,27 +31,29 @@ export const getUserNotifications = expressAsyncHandler(async (req: AuthRequest,
   res.json(notifications);
 });
 
-// Mark a notification as read
-export const markNotificationAsRead = expressAsyncHandler(async (req: AuthRequest, res: Response) => {
+// Create a new notification for a user
+export const createNotification = expressAsyncHandler(async (req: AuthRequest, res: Response) => {
   if (!req.user) {
     res.status(401).json({ message: 'Not authorized' });
     return;
   }
 
-  const { id } = req.params;
+  const { message, type } = req.body;
 
-  const notification = await Notification.findOneAndUpdate(
-    { _id: id, userId: req.user.id },
-    { isRead: true },
-    { new: true }
-  );
-
-  if (!notification) {
-    res.status(404).json({ message: 'Notification not found' });
+  if (!message || !type) {
+    res.status(400).json({ message: 'Message and type are required' });
     return;
   }
 
-  res.json({ message: 'Notification marked as read', notification });
+  const notification = new Notification({
+    userId: req.user.id,
+    message,
+    type,
+    isRead: false,
+  });
+
+  const savedNotification = await notification.save();
+  res.status(201).json(savedNotification);
 });
 
 // Mark all notifications as read for a user
@@ -72,17 +74,3 @@ export const markAllNotificationsAsRead = expressAsyncHandler(async (req: AuthRe
   });
 });
 
-// Get notification count for unread notifications
-export const getUnreadNotificationCount = expressAsyncHandler(async (req: AuthRequest, res: Response) => {
-  if (!req.user) {
-    res.status(401).json({ message: 'Not authorized' });
-    return;
-  }
-
-  const count = await Notification.countDocuments({
-    userId: req.user.id,
-    isRead: false
-  });
-
-  res.json({ unreadCount: count });
-});

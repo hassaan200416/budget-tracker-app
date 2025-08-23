@@ -3,11 +3,10 @@
   "version": "1.0.0",
   "description": "Backend for Budget Tracking App",
   "main": "index.js",
-  "scripts": {
-    "start": "nodemon --watch 'src/**/*.ts' src/server.ts",
-    "build": "tsc",
-    "test": "jest"
-  },
+ "scripts": { 
+  "start": "nodemon --watch 'src/**/*.ts' src/server.ts",
+  "build": "tsc",
+  "test": "jest" },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/hassaan200416/budget-app-backend.git"

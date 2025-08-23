@@ -62,4 +62,7 @@ userSchema.methods.comparePassword = async function(password: string): Promise<b
   return bcrypt.compare(password, this.password);
 };
 
+// Indexes for faster queries
+userSchema.index({ email: 1 }, { unique: true }); // For login queries
+
 export default mongoose.model<IUser>('User', userSchema);

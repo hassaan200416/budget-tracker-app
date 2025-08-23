@@ -46,7 +46,8 @@ const entrySchema: Schema<IEntry> = new mongoose.Schema({
   timestamps: true // Adds createdAt and updatedAt automatically
 });
 
-// Index for faster queries by user
-entrySchema.index({ userId: 1 });
+// Basic indexes for essential queries
+entrySchema.index({ userId: 1 }); // For user-specific queries
+entrySchema.index({ userId: 1, date: 1 }); // For user + date filtering
 
 export default mongoose.model<IEntry>('Entry', entrySchema);
