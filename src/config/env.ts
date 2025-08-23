@@ -24,6 +24,9 @@ export const env = {
   
   // CORS Configuration
   CORS_ORIGIN: process.env.CORS_ORIGIN || 'http://localhost:3005',
+  
+  // Frontend URL for production
+  FRONTEND_URL: process.env.FRONTEND_URL || 'http://localhost:3005',
 } as const;
 
 /**
@@ -42,4 +45,4 @@ export const validateEnv = (): void => {
 };
 
 // Export individual variables for convenience
-export const { MONGODB_URI, JWT_SECRET, PORT, NODE_ENV, CORS_ORIGIN } = env;
+export const { MONGODB_URI, JWT_SECRET, PORT, NODE_ENV, CORS_ORIGIN, FRONTEND_URL } = env;

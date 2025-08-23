@@ -20,8 +20,25 @@ dotenv.config();
 
 const app = express();
 
-// Allow the frontend dev server to call the API and include credentials
-app.use(cors({ origin: 'http://localhost:3005', credentials: true }));
+// CORS configuration for both development and production
+const allowedOrigins = [
+  'http://localhost:3005', // Local development
+  'https://budget-app-frontend-pc14-97de7ctoc-hassaan-raheels-projects.vercel.app', // Vercel frontend
+];
+
+app.use(cors({ 
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true 
+}));
 app.use(express.json({ limit: '5mb' }));
 app.use(express.urlencoded({ extended: true, limit: '5mb' }));
 
