@@ -2,10 +2,9 @@
   "name": "budget-app-backend",
   "version": "1.0.0",
   "description": "Backend for Budget Tracking App",
-  "main": "dist/server.js",
+  "main": "index.js",
  "scripts": { 
-  "start": "node dist/server.js",
-  "dev": "nodemon --watch 'src/**/*.ts' src/server.ts",
+  "start": "nodemon --watch 'src/**/*.ts' src/server.ts",
   "build": "tsc",
   "test": "jest" },
   "repository": {

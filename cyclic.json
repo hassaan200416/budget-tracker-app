@@ -1,7 +1,0 @@
-{
-  "name": "budget-app-backend",
-  "type": "node",
-  "buildCommand": "npm run build",
-  "startCommand": "npm start",
-  "devCommand": "npm run dev"
-}
