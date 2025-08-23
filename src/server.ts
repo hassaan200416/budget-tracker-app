@@ -23,7 +23,7 @@ const app = express();
 // CORS configuration for both development and production
 const allowedOrigins = [
   'http://localhost:3005', // Local development
-  'https://budget-app-frontend-pc14-97de7ctoc-hassaan-raheels-projects.vercel.app', // Vercel frontend
+  'https://budget-app-frontend-pc14.vercel.app', // Vercel frontend
 ];
 
 app.use(cors({ 

@@ -14,4 +14,4 @@ services:
       - key: JWT_SECRET
         sync: false
       - key: FRONTEND_URL
-        value: https://budget-app-frontend-pc14-97de7ctoc-hassaan-raheels-projects.vercel.app
+        value: https://budget-app-frontend-pc14.vercel.app

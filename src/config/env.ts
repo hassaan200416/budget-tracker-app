@@ -26,7 +26,7 @@ export const env = {
   CORS_ORIGIN: process.env.CORS_ORIGIN || 'http://localhost:3005',
   
   // Frontend URL for production
-  FRONTEND_URL: process.env.FRONTEND_URL || 'http://localhost:3005',
+  FRONTEND_URL: process.env.FRONTEND_URL || 'https://budget-app-frontend-pc14.vercel.app',
 } as const;
 
 /**
