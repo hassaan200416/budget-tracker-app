@@ -10,6 +10,7 @@ import express from 'express';
 import mongoose from 'mongoose';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import { env } from './config/env';
 import authRoutes from './routes/authRoutes';
 import profileRoutes from './routes/profileRoutes';
 import entryRoutes from './routes/entryRoutes';
@@ -20,8 +21,9 @@ dotenv.config();
 
 const app = express();
 
-// Allow the frontend dev server to call the API and include credentials
-app.use(cors({ origin: 'http://localhost:3005', credentials: true }));
+// Allow the frontend to call the API and include credentials
+// Use CORS_ORIGIN from env to support deployed domains (e.g., Vercel)
+app.use(cors({ origin: env.CORS_ORIGIN, credentials: true }));
 app.use(express.json({ limit: '5mb' }));
 app.use(express.urlencoded({ extended: true, limit: '5mb' }));
 
