@@ -49,7 +49,7 @@ export const authAPI = {
   }) => {
     const response = await fetch(`${API_BASE_URL}/signup`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': 'true' },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(userData),
     });
 
