@@ -18,6 +18,8 @@ const makeAuthRequest = async (url: string, options: RequestInit = {}) => {
     ...options,
     headers: {
       'Content-Type': 'application/json',
+      // Bypass ngrok free-tier browser interstitial page
+      'ngrok-skip-browser-warning': 'true',
       // Add Bearer token if available
       ...(token && { 'Authorization': `Bearer ${token}` }),
       ...options.headers,
@@ -47,7 +49,7 @@ export const authAPI = {
   }) => {
     const response = await fetch(`${API_BASE_URL}/signup`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': 'true' },
       body: JSON.stringify(userData),
     });
 
@@ -63,7 +65,7 @@ export const authAPI = {
   login: async (credentials: { email: string; password: string }) => {
     const response = await fetch(`${API_BASE_URL}/login`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': 'true' },
       body: JSON.stringify(credentials),
     });
     
