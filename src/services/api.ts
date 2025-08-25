@@ -2,7 +2,7 @@
 // Centralizes base URL, token injection, and error handling.
 // Keep endpoints thin: return JSON the UI already expects.
 // Base URL for the backend API
-const API_BASE_URL = 'http://localhost:5000/api';
+const API_BASE_URL = ' https://87eba7b1eccb.ngrok-free.app';
 
 // Helper: retrieve JWT from either localStorage (remember me) or sessionStorage
 const getAuthToken = () => {
