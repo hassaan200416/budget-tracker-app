@@ -1,9 +1,15 @@
 // HTTP client utilities and typed API surface for the frontend.
 // Centralizes base URL, token injection, and error handling.
 // Keep endpoints thin: return JSON the UI already expects.
-// Base URL for the backend API
-
-const API_BASE_URL = 'https://71a8985c69d7.ngrok-free.app/api';
+// Base URL for the backend API - automatically detects local vs deployed
+const API_BASE_URL = (() => {
+  // Check if we're in development (localhost)
+  if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+    return 'http://localhost:5000/api';
+  }
+  // Production/vercel - use env var or fallback to ngrok
+  return import.meta.env.VITE_API_BASE_URL || 'https://71a8985c69d7.ngrok-free.app/api';
+})();
 // Helper: retrieve JWT from either localStorage (remember me) or sessionStorage
 const getAuthToken = () => {
   return localStorage.getItem('token') || sessionStorage.getItem('token');
