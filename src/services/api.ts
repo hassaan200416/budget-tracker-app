@@ -8,7 +8,7 @@ const API_BASE_URL = (() => {
     return 'http://localhost:5000/api';
   }
   // Production/vercel - use env var or fallback to ngrok
-  return import.meta.env.VITE_API_BASE_URL || 'https://71a8985c69d7.ngrok-free.app/api';
+  return import.meta.env.VITE_API_BASE_URL || 'https://26c682d74b00.ngrok-free.app/api';
 })();
 // Helper: retrieve JWT from either localStorage (remember me) or sessionStorage
 const getAuthToken = () => {
