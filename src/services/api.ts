@@ -1,14 +1,20 @@
 // HTTP client utilities and typed API surface for the frontend.
 // Centralizes base URL, token injection, and error handling.
 // Keep endpoints thin: return JSON the UI already expects.
-// Base URL for the backend API - automatically detects local vs deployed
+// Base URL for the backend API - prefer explicit env override, then infer
 const API_BASE_URL = (() => {
-  // Check if we're in development (localhost)
+  // Always prefer env var so local frontend can point to ngrok/tunnel
+  if (import.meta.env.VITE_API_BASE_URL) {
+    return import.meta.env.VITE_API_BASE_URL as string;
+  }
+
+  // Fallbacks by hostname
   if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
     return 'http://localhost:5000/api';
   }
-  // Production/vercel - use env var or fallback to ngrok
-  return import.meta.env.VITE_API_BASE_URL || 'https://26c682d74b00.ngrok-free.app/api';
+
+  // Final fallback to a default public tunnel (update as needed)
+  return 'https://26c682d74b00.ngrok-free.app/api';
 })();
 // Helper: retrieve JWT from either localStorage (remember me) or sessionStorage
 const getAuthToken = () => {
@@ -36,6 +42,11 @@ const makeAuthRequest = async (url: string, options: RequestInit = {}) => {
 
   // Handle HTTP errors and throw descriptive error messages
   if (!response.ok) {
+    // If token is invalid/expired, clear it to force re-login
+    if (response.status === 401) {
+      localStorage.removeItem('token');
+      sessionStorage.removeItem('token');
+    }
     const errorData = await response.json().catch(() => ({}));
     throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
   }
