@@ -20,8 +20,17 @@ dotenv.config();
 
 const app = express();
 
-// Allow the frontend dev server to call the API and include credentials
-app.use(cors({ origin: 'http://localhost:3005', credentials: true }));
+// Allow the frontend (local dev and Vercel) to call the API and include credentials
+app.use(cors({
+  origin: [
+    'http://localhost:3005',
+    'https://budget-app-frontend-3m7bd7int-hassaan-raheels-projects.vercel.app',
+    'https://budget-app-frontend-jet.vercel.app',
+  ],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'ngrok-skip-browser-warning'],
+  credentials: true,
+}));
 app.use(express.json({ limit: '5mb' }));
 app.use(express.urlencoded({ extended: true, limit: '5mb' }));
 
