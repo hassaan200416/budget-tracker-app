@@ -16,12 +16,23 @@ dotenv.config();
 const app = express();
 
 // Allow the frontend (local dev and Vercel) to call the API and include credentials
+const allowedOrigins = new Set([
+  'http://localhost:3005',
+  'http://localhost:5173',
+  'https://budget-app-frontend-3m7bd7int-hassaan-raheels-projects.vercel.app',
+  'https://budget-app-frontend-jet.vercel.app',
+]);
+
 app.use(cors({
-  origin: [
-    'http://localhost:3005',
-    'https://budget-app-frontend-3m7bd7int-hassaan-raheels-projects.vercel.app',
-    'https://budget-app-frontend-jet.vercel.app',
-  ],
+  origin: (origin, callback) => {
+    // Allow non-browser requests or same-origin
+    if (!origin) return callback(null, true);
+    // Allow explicit allowlist and Vercel preview/prod domains
+    if (allowedOrigins.has(origin) || /^https:\/\/.*\.vercel\.app$/.test(origin)) {
+      return callback(null, true);
+    }
+    return callback(new Error('Not allowed by CORS'));
+  },
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'ngrok-skip-browser-warning'],
   credentials: true,
