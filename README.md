@@ -216,10 +216,13 @@ interface AuthContextType {
    npm run dev
    ```
 
-The frontend expects the backend at `http://localhost:5000/api`. If using a different port or host, either:
+The frontend uses `VITE_API_BASE_URL` for the API base. Create a `.env` in this folder with:
 
-- Update the hardcoded base in `src/services/api.ts`, or
-- Add `VITE_API_BASE_URL` in a `.env` and adapt `api.ts` to read it (optional enhancement).
+```
+VITE_API_BASE_URL=http://localhost:5000/api
+```
+
+For production, set it to your deployed backend, e.g. `https://<your-backend>.vercel.app/api`.
 
 4. **Build for production**
    ```bash
