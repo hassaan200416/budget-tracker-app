@@ -48,6 +48,12 @@ async function ensureDatabaseConnected() {
 ensureDatabaseConnected().catch((err) => console.error('MongoDB connect error:', err));
 
 // Routes
+app.get('/', (_req, res) => {
+  res.json({ status: 'ok', service: 'budget-app-backend', docs: '/api' });
+});
+app.get('/api', (_req, res) => {
+  res.json({ message: 'Budget App API. Use /signup, /login, /entries, /notifications, /profile' });
+});
 app.use('/api', authRoutes);
 app.use('/api/profile', profileRoutes);
 app.use('/api/entries', entryRoutes);
