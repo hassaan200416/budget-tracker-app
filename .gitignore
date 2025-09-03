@@ -188,3 +188,8 @@ temp/
 .Trashes
 ehthumbs.db
 Thumbs.db
+
+# Local backups and nested repos we don't want to track
+_backup_*/
+/budget-app/
+**/.git/
