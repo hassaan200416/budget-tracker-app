@@ -10,7 +10,7 @@
     "skipLibCheck": true,          // Skip type checking of declaration files for faster builds
     "forceConsistentCasingInFileNames": true, // Ensures consistent file naming
     "resolveJsonModule": true,     // Allows importing JSON files (useful for config)
-    "types": ["node"]              // Adds TypeScript definitions for Node.js only
+    "types": ["node", "express", "cors", "jsonwebtoken", "bcrypt", "bcryptjs"]  // All necessary type definitions
   },
   "include": ["src/**/*", "tests/**/*"],
   "exclude": ["node_modules"]     // Explicitly exclude node_modules to avoid unnecessary processing
