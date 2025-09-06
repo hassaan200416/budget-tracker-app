@@ -13,8 +13,8 @@ const API_BASE_URL = (() => {
     return 'http://localhost:5000/api';
   }
 
-  // Final fallback to a default public tunnel (update as needed)
-  return 'https://26c682d74b00.ngrok-free.app/api';
+  // Production backend URL (update this with your actual Vercel backend URL)
+  return 'https://budget-app-backend-xyz789.vercel.app/api';
 })();
 // Helper: retrieve JWT from either localStorage (remember me) or sessionStorage
 const getAuthToken = () => {
