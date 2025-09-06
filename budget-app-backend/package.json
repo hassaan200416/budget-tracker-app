@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "description": "Backend for Budget Tracking App",
   "main": "index.js",
+  "engines": {
+    "node": ">=20.0.0"
+  },
  "scripts": { 
   "start": "nodemon --watch 'src/**/*.ts' src/server.ts",
   "build": "tsc",
